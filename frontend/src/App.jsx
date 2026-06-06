@@ -17,7 +17,14 @@ import {
   Divider,
   CircularProgress,
   Tooltip,
-  Badge
+  Badge,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  OutlinedInput,
+  ListItemText,
+  Autocomplete
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import SendIcon from '@mui/icons-material/Send';
@@ -41,8 +48,9 @@ function App() {
   const [selectedAirlines, setSelectedAirlines] = useState([]);
   const [destinationFilter, setDestinationFilter] = useState('');
   
-  // Available Airlines list for filters
+  // Available list options for filters
   const [availableAirlines, setAvailableAirlines] = useState([]);
+  const [availableDestinations, setAvailableDestinations] = useState([]);
 
   // Chatbot States
   const [chatMessages, setChatMessages] = useState([
@@ -77,6 +85,10 @@ function App() {
         // Extract unique airlines from active flights
         const airlines = [...new Set(data.map(f => f.airline))].sort();
         setAvailableAirlines(airlines);
+
+        // Extract unique destinations from active flights
+        const destinations = [...new Set(data.map(f => f.destination.toUpperCase()))].sort();
+        setAvailableDestinations(destinations);
         
         // Set maximum price slider range dynamically based on flights if possible
         if (data.length > 0) {
@@ -367,10 +379,16 @@ function App() {
         <Grid container spacing={3} sx={{ flexGrow: 1 }}>
           
           {/* LEFT PANEL: Flights Table & Filters (70% width) */}
-          <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Grid item xs={12} md={8.4} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             
             {/* Quick Filters Card */}
-            <Paper sx={{ p: 2.5 }}>
+            <Paper 
+              sx={{ 
+                p: 2.5,
+                borderTop: '4px solid #64748b', // Slate grey top border
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)'
+              }}
+            >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                   Quick Filters
@@ -388,7 +406,7 @@ function App() {
                 )}
               </Box>
               
-              <Grid container spacing={4}>
+              <Grid container spacing={4} alignItems="center">
                 {/* Max Price Slider */}
                 <Grid item xs={12} sm={4}>
                   <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
@@ -404,57 +422,90 @@ function App() {
                   />
                 </Grid>
                 
-                {/* Destination Search */}
+                {/* Destination Search with Autocomplete */}
                 <Grid item xs={12} sm={3}>
                   <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
                     Destination Code (e.g. JFK)
                   </Typography>
-                  <TextField
+                  <Autocomplete
+                    freeSolo
                     size="small"
-                    variant="outlined"
-                    placeholder="Anywhere"
-                    fullWidth
+                    options={availableDestinations}
                     value={destinationFilter}
-                    onChange={(e) => setDestinationFilter(e.target.value.toUpperCase())}
-                    inputProps={{ maxLength: 3 }}
+                    onChange={(event, newValue) => {
+                      setDestinationFilter(newValue || '');
+                    }}
+                    inputValue={destinationFilter}
+                    onInputChange={(event, newInputValue) => {
+                      setDestinationFilter(newInputValue.toUpperCase());
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Anywhere"
+                        inputProps={{
+                          ...params.inputProps,
+                          maxLength: 3,
+                          style: { textTransform: 'uppercase' }
+                        }}
+                      />
+                    )}
                   />
                 </Grid>
 
-                {/* Airlines Checkbox List */}
+                {/* Airlines Multi-Select Dropdown */}
                 <Grid item xs={12} sm={5}>
                   <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
                     Airlines
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxHeight: '80px', overflowY: 'auto', p: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: '8px' }}>
-                    {availableAirlines.length === 0 ? (
-                      <Typography variant="caption" sx={{ p: 1, color: 'text.secondary' }}>No airlines available</Typography>
-                    ) : (
-                      availableAirlines.map(airline => {
-                        const isChecked = selectedAirlines.includes(airline);
-                        return (
-                          <Chip
-                            key={airline}
-                            label={airline}
-                            clickable
-                            color={isChecked ? "primary" : "default"}
-                            onClick={() => {
-                              setSelectedAirlines(prev => 
-                                isChecked ? prev.filter(a => a !== airline) : [...prev, airline]
-                              );
-                            }}
-                            size="small"
-                            sx={{ fontSize: '0.7rem' }}
-                          />
-                        );
-                      })
-                    )}
-                  </Box>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="airlines-select-label">Select Airlines</InputLabel>
+                    <Select
+                      labelId="airlines-select-label"
+                      id="airlines-select"
+                      multiple
+                      value={selectedAirlines}
+                      onChange={(e) => setSelectedAirlines(e.target.value)}
+                      input={<OutlinedInput label="Select Airlines" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {selected.map((value) => (
+                            <Chip key={value} label={value} size="small" />
+                          ))}
+                        </Box>
+                      )}
+                      MenuProps={{
+                        PaperProps: {
+                          style: {
+                            maxHeight: 250,
+                          },
+                        },
+                      }}
+                    >
+                      {availableAirlines.map((name) => (
+                        <MenuItem key={name} value={name}>
+                          <Checkbox checked={selectedAirlines.indexOf(name) > -1} />
+                          <ListItemText primary={name} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Paper>
 
             {/* Flights Grid Results Container */}
-            <Paper sx={{ flexGrow: 1, p: 2, minHeight: '450px', display: 'flex', flexDirection: 'column' }}>
+            <Paper 
+              sx={{ 
+                flexGrow: 1, 
+                p: 2, 
+                minHeight: '450px', 
+                display: 'flex', 
+                flexDirection: 'column',
+                borderTop: '4px solid #1a73e8', // Primary Blue top border
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)'
+              }}
+            >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                   Available Flight Listings
@@ -499,24 +550,43 @@ function App() {
           </Grid>
 
           {/* RIGHT PANEL: AI Chatbot Panel (30% width) */}
-          <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Paper sx={{ display: 'flex', flexDirection: 'column', height: '620px', overflow: 'hidden' }}>
+          <Grid item xs={12} md={3.6} sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Paper 
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%', 
+                minHeight: '700px', 
+                overflow: 'hidden',
+                border: '1px solid #ddd6fe', // Purple borders
+                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05)'
+              }}
+            >
               
               {/* Chat Title Header */}
-              <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
+              <Box 
+                sx={{ 
+                  p: 2.2, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1.5, 
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', // Violet-to-Purple premium gradient
+                  color: '#ffffff' 
+                }}
+              >
                 <SmartToyIcon />
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
                     AI Flight Assistant
                   </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  <Typography variant="caption" sx={{ opacity: 0.85 }}>
                     Gemini-powered natural language queries
                   </Typography>
                 </Box>
               </Box>
               
               {/* Chat Messages Feed */}
-              <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, bgcolor: '#f8fafc' }}>
+              <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, bgcolor: '#f5f3ff' }}> {/* Lavender tint background */}
                 {chatMessages.map((msg, index) => {
                   const isAgent = msg.sender === 'agent';
                   return (
@@ -529,16 +599,17 @@ function App() {
                       }}
                     >
                       <Box sx={{ display: 'flex', gap: 1, maxWidth: '85%', flexDirection: isAgent ? 'row' : 'row-reverse' }}>
-                        <Avatar sx={{ width: 28, height: 28, bgcolor: isAgent ? 'primary.main' : 'grey.600' }}>
+                        <Avatar sx={{ width: 28, height: 28, bgcolor: isAgent ? '#7c3aed' : '#475569' }}>
                           {isAgent ? <SmartToyIcon sx={{ fontSize: 16 }} /> : <PersonIcon sx={{ fontSize: 16 }} />}
                         </Avatar>
                         <Paper 
                           sx={{ 
                             p: 1.5, 
-                            bgcolor: isAgent ? 'background.paper' : 'primary.main',
-                            color: isAgent ? 'text.primary' : 'primary.contrastText',
+                            bgcolor: isAgent ? '#ffffff' : '#4f46e5',
+                            color: isAgent ? '#0f172a' : '#ffffff',
                             borderRadius: isAgent ? '4px 16px 16px 16px' : '16px 4px 16px 16px',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
+                            border: isAgent ? '1px solid #e9d5ff' : 'none',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
                           }}
                         >
                           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
@@ -551,11 +622,11 @@ function App() {
                 })}
                 {sendingChat && (
                   <Box sx={{ display: 'flex', gap: 1, maxWidth: '85%' }}>
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: 'primary.main' }}>
+                    <Avatar sx={{ width: 28, height: 28, bgcolor: '#7c3aed' }}>
                       <SmartToyIcon sx={{ fontSize: 16 }} />
                     </Avatar>
-                    <Paper sx={{ p: 1.5, borderRadius: '4px 16px 16px 16px', display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CircularProgress size={16} />
+                    <Paper sx={{ p: 1.5, borderRadius: '4px 16px 16px 16px', display: 'flex', alignItems: 'center', gap: 1, border: '1px solid #e9d5ff' }}>
+                      <CircularProgress size={16} color="secondary" />
                       <Typography variant="body2" sx={{ color: 'text.secondary' }}>Thinking...</Typography>
                     </Paper>
                   </Box>
