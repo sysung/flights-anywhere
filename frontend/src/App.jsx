@@ -375,7 +375,7 @@ function App() {
       </Paper>
 
       {/* Main Split-Pane Workspace */}
-      <Container maxWidth="xl" sx={{ flexGrow: 1, py: 3, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ flexGrow: 1, px: 3, py: 2, display: 'flex', flexDirection: 'column', width: '100%' }}>
         <Grid container spacing={3} sx={{ flexGrow: 1 }}>
           
           {/* LEFT PANEL: Flights Table & Filters (70% width) */}
@@ -555,8 +555,9 @@ function App() {
               sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
-                height: '100%', 
-                minHeight: '700px', 
+                position: 'sticky',
+                top: '90px',
+                height: 'calc(100vh - 120px)', 
                 overflow: 'hidden',
                 border: '1px solid #ddd6fe', // Purple borders
                 boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05)'
@@ -714,7 +715,7 @@ function App() {
           </Grid>
           
         </Grid>
-      </Container>
+      </Box>
     </Box>
   );
 }
