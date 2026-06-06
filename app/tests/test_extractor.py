@@ -1,4 +1,4 @@
-from app.extractor_utils import format_time_array, find_price_in_flight
+from app.scraper.extractor_utils import format_time_array, find_price_in_flight
 
 def test_format_time_array():
     assert format_time_array([14, 30]) == "14:30"

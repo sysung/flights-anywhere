@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from app.database import SessionLocal
-from app.models import Flight, Airport, ScraperLog
-from app.scraper import run_flight_scrape
-from app.extractor_utils import extract_flights_info
+from app.db.database import SessionLocal
+from app.db.models import Flight, Airport, ScraperLog
+from app.scraper.scraper import run_flight_scrape
+from app.scraper.extractor_utils import extract_flights_info
 
 logger = logging.getLogger(__name__)
 

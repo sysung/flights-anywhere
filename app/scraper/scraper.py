@@ -4,7 +4,7 @@ import json
 import logging
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
-from app.stream_parser import WizStreamParser
+from app.scraper.stream_parser import WizStreamParser
 
 logger = logging.getLogger(__name__)
 

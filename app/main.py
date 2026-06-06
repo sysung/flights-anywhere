@@ -6,11 +6,11 @@ from typing import List, Optional
 import os
 import logging
 
-from app.database import get_db, Base, engine
-from app.models import Flight, ScraperLog
-from app.config import settings
-from app.schemas import FlightOut, ScraperLogOut
-from app.extractor import run_full_extraction_job
+from app.db.database import get_db, Base, engine
+from app.db.models import Flight, ScraperLog
+from app.core.config import settings
+from app.db.schemas import FlightOut, ScraperLogOut
+from app.scraper.extractor import run_full_extraction_job
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def post_chat(req: ChatRequest, db: Session = Depends(get_db)):
     Processes chat requests using the Gemini AI agent.
     """
     try:
-        from app.agent import run_chatbot_agent
+        from app.core.agent import run_chatbot_agent
     except ImportError:
         return {
             "response_text": "Assistant offline. Please wait until Task 5 is completed.",
