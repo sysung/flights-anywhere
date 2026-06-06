@@ -1,5 +1,5 @@
 # Stage 1: Build the React + MUI Frontend
-FROM node:18-slim AS node_builder
+FROM node:20-slim AS node_builder
 WORKDIR /frontend
 COPY frontend/package.json ./
 RUN npm install
