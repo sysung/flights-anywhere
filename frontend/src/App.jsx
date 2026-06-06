@@ -234,7 +234,6 @@ function App() {
       field: 'price', 
       headerName: 'Price', 
       width: 120,
-      valueGetter: (params) => params.row.price,
       renderCell: (params) => (
         <Typography sx={{ color: '#137333', fontWeight: 'bold', fontFamily: 'Roboto' }}>
           ${parseFloat(params.value).toFixed(2)}
@@ -244,14 +243,13 @@ function App() {
     { 
       field: 'departure_date', 
       headerName: 'Departure', 
-      width: 130,
-      valueFormatter: (params) => params.value
+      width: 130
     },
     { 
       field: 'return_date', 
       headerName: 'Return', 
       width: 130,
-      valueFormatter: (params) => params.value || 'One way'
+      renderCell: (params) => params.value || 'One way'
     },
     { 
       field: 'stops', 
@@ -267,7 +265,6 @@ function App() {
       field: 'duration_minutes', 
       headerName: 'Duration', 
       width: 120,
-      valueGetter: (params) => params.row.duration_minutes,
       renderCell: (params) => {
         if (!params.value) return 'Unknown';
         const hours = Math.floor(params.value / 60);
