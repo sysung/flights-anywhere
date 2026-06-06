@@ -8,6 +8,6 @@ pydantic==2.6.1
 pydantic-settings==2.1.0
 google-generativeai==0.3.2
 apscheduler==3.10.4
-bbpb
+blackboxprotobuf==1.3.0
 tzdata
 pytest==8.0.2
