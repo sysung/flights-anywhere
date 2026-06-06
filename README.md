@@ -36,7 +36,7 @@ docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
   export DATABASE_URL="postgresql://postgres:REDACTED@acela.proxy.rlwy.net:46865/railway"
   docker-compose up
   ```
-- **Switching Back to Local DB**: If you want to return to testing against the local container database, simply run `unset DATABASE_URL` in your terminal or remove `DATABASE_URL` from your local `.env` file, then run `docker-compose up`. The app service will fall back to using the local Postgres container.
+    - **Switching Back to Local DB**: If you want to return to testing against the local container database, simply run `unset DATABASE_URL` in your terminal or remove `DATABASE_URL` from your local `.env` file, then run `docker-compose up`. The app service will fall back to using the local Postgres container.
 - **Production (Railway)**: The container is deployed via `Dockerfile` and securely binds to the internal database port automatically. Pushing commits to `main` branch redeploys the service.
 
 ---
