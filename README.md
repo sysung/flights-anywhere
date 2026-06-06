@@ -21,7 +21,12 @@ docker-compose up --build
 ```
 Access the local dashboard: **`http://localhost:8000`**
 
-### 3. Run Automated Tests
+### 3. Build & Development (npm)
+A root `package.json` is provided to delegate commands to the frontend:
+- **`npm run build`**: Build the production frontend.
+- **`npm run dev`**: Start the frontend development server.
+
+### 4. Run Automated Tests
 ```bash
 docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
 ```
@@ -44,8 +49,11 @@ docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
 
 ## 🏗️ System Architecture
 
-- **Frontend (React + MUI)**: Responsive split-pane dashboard. Displays the flight data grid, active filters chips, and the Gemini-powered AI chatbot assistant.
-- **Backend (FastAPI)**: REST endpoints (`/api/flights`, `/api/scraper/status`, `/api/chat`) and serves compiled React assets.
+- **Frontend (React + MUI)**: Responsive split-pane dashboard. Displays the flight data grid, active filters chips, and the Gemini-powered AI chatbot assistant (now in a sleek blue theme).
+- **Backend (FastAPI)**: Modularized structure for scalability:
+    - `app/core/`: Configuration and AI agent logic.
+    - `app/db/`: Database models, schemas, and session management.
+    - `app/scraper/`: Playwright-based Google Flights scraper and stream parsing.
 - **Scraper (Playwright)**: Scheduled crawler intercepting Google Flights stream results to ingest routes.
 - **Database (PostgreSQL)**: Managed OLTP store for flights and scraper logs.
 
