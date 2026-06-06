@@ -8,6 +8,7 @@ import logging
 
 from app.database import get_db, Base, engine
 from app.models import Flight, ScraperLog
+from app.config import settings
 from app.schemas import FlightOut, ScraperLogOut
 from app.extractor import run_full_extraction_job
 
@@ -36,11 +37,11 @@ def startup_event():
 # Start background scheduler
 try:
     from apscheduler.schedulers.background import BackgroundScheduler
-    scheduler = BackgroundScheduler()
+    scheduler = BackgroundScheduler(timezone=settings.timezone)
     # Runs the ingestion job every 12 hours
     scheduler.add_job(run_full_extraction_job, 'interval', hours=12)
     scheduler.start()
-    logger.info("Background flight scheduler started successfully.")
+    logger.info(f"Background flight scheduler started successfully with timezone: {settings.timezone}")
 except Exception as e:
     logger.error(f"Failed to initialize background scheduler: {e}")
 
