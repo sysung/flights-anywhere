@@ -31,11 +31,12 @@ docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
 ## 🧪 Multi-Environment Testing Strategy
 
 - **Local Development**: Runs `docker-compose up`. The web application automatically connects to the isolated local PostgreSQL container.
-- **Local Testing against Production (Railway DB)**: Set the `DATABASE_URL` env variable to your Railway public database connection string. The local app service will dynamically connect to the production database:
+- **Local Testing against Production (Railway DB)**: Set the `DATABASE_URL` env variable to your Railway public database connection string:
   ```bash
   export DATABASE_URL="postgresql://postgres:REDACTED@acela.proxy.rlwy.net:46865/railway"
   docker-compose up
   ```
+- **Switching Back to Local DB**: If you want to return to testing against the local container database, simply run `unset DATABASE_URL` in your terminal or remove `DATABASE_URL` from your local `.env` file, then run `docker-compose up`. The app service will fall back to using the local Postgres container.
 - **Production (Railway)**: The container is deployed via `Dockerfile` and securely binds to the internal database port automatically. Pushing commits to `main` branch redeploys the service.
 
 ---

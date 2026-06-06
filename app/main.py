@@ -27,6 +27,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def startup_event():
+    import threading
+    logger.info("Triggering initial flight scrape on startup thread...")
+    threading.Thread(target=run_full_extraction_job, daemon=True).start()
+
 # Start background scheduler
 try:
     from apscheduler.schedulers.background import BackgroundScheduler
