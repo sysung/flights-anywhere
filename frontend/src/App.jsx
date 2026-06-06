@@ -393,22 +393,11 @@ function App() {
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                   Quick Filters
                 </Typography>
-                {(maxPrice < 2000 || selectedAirlines.length > 0 || destinationFilter) && (
-                  <Button 
-                    startIcon={<FilterAltOffIcon />} 
-                    size="small" 
-                    color="error" 
-                    onClick={handleResetFilters}
-                    sx={{ fontSize: '0.75rem' }}
-                  >
-                    Clear Filters
-                  </Button>
-                )}
               </Box>
               
-              <Grid container spacing={4} alignItems="center">
+              <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 3, flexWrap: 'wrap' }}>
                 {/* Max Price Slider */}
-                <Grid item xs={12} sm={4}>
+                <Box sx={{ width: 160, flexShrink: 0, mb: 0.5 }}>
                   <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
                     Max Price: <strong>${maxPrice}</strong>
                   </Typography>
@@ -419,16 +408,16 @@ function App() {
                     max={2000}
                     step={50}
                     valueLabelDisplay="auto"
+                    sx={{ py: 1 }}
                   />
-                </Grid>
+                </Box>
                 
-                {/* Destination Search with Autocomplete */}
-                <Grid item xs={12} sm={3}>
-                  <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
-                    Destination Code (e.g. JFK)
+                {/* Destination Code Autocomplete */}
+                <Box sx={{ width: 140, flexShrink: 0 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+                    Destination
                   </Typography>
                   <Autocomplete
-                    freeSolo
                     size="small"
                     options={availableDestinations}
                     value={destinationFilter}
@@ -446,52 +435,58 @@ function App() {
                         inputProps={{
                           ...params.inputProps,
                           maxLength: 3,
-                          style: { textTransform: 'uppercase' }
+                          style: { textTransform: 'uppercase', fontWeight: 'bold' }
                         }}
                       />
                     )}
                   />
-                </Grid>
+                </Box>
 
-                {/* Airlines Multi-Select Dropdown */}
-                <Grid item xs={12} sm={5}>
-                  <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 500 }}>
+                {/* Airlines Multi-Select Autocomplete */}
+                <Box sx={{ flexGrow: 1, minWidth: 200 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
                     Airlines
                   </Typography>
-                  <FormControl fullWidth size="small">
-                    <InputLabel id="airlines-select-label">Select Airlines</InputLabel>
-                    <Select
-                      labelId="airlines-select-label"
-                      id="airlines-select"
-                      multiple
-                      value={selectedAirlines}
-                      onChange={(e) => setSelectedAirlines(e.target.value)}
-                      input={<OutlinedInput label="Select Airlines" />}
-                      renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map((value) => (
-                            <Chip key={value} label={value} size="small" />
-                          ))}
-                        </Box>
-                      )}
-                      MenuProps={{
-                        PaperProps: {
-                          style: {
-                            maxHeight: 250,
-                          },
-                        },
-                      }}
-                    >
-                      {availableAirlines.map((name) => (
-                        <MenuItem key={name} value={name}>
-                          <Checkbox checked={selectedAirlines.indexOf(name) > -1} />
-                          <ListItemText primary={name} />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-              </Grid>
+                  <Autocomplete
+                    multiple
+                    size="small"
+                    options={availableAirlines}
+                    value={selectedAirlines}
+                    onChange={(event, newValue) => {
+                      setSelectedAirlines(newValue);
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="All Airlines"
+                      />
+                    )}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          label={option}
+                          size="small"
+                          {...getTagProps({ index })}
+                        />
+                      ))
+                    }
+                  />
+                </Box>
+
+                {/* Outlined Red Reset Button */}
+                <Box sx={{ flexShrink: 0 }}>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<FilterAltOffIcon />}
+                    onClick={handleResetFilters}
+                    disabled={!(maxPrice < 2000 || selectedAirlines.length > 0 || destinationFilter)}
+                    sx={{ height: 40 }}
+                  >
+                    Clear Filters
+                  </Button>
+                </Box>
+              </Box>
             </Paper>
 
             {/* Flights Grid Results Container */}
