@@ -385,7 +385,8 @@ function App() {
             <Paper 
               sx={{ 
                 p: 2.5,
-                borderTop: '4px solid #64748b', // Slate grey top border
+                bgcolor: '#f1f5f9',
+                borderLeft: '4px solid #64748b', // Slate grey left border
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)'
               }}
             >
@@ -497,7 +498,7 @@ function App() {
                 minHeight: '450px', 
                 display: 'flex', 
                 flexDirection: 'column',
-                borderTop: '4px solid #1a73e8', // Primary Blue top border
+                borderLeft: '4px solid #1a73e8', // Primary Blue left border
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)'
               }}
             >
