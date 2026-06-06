@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: flights_db
+    environment:
+      POSTGRES_USER: flights_user
+      POSTGRES_PASSWORD: flights_pass
+      POSTGRES_DB: flights_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: flights_app
+    environment:
+      - DATABASE_URL=postgresql://flights_user:flights_pass@db:5432/flights_db
+      - GOOGLE_CLOUD_API_KEY=${GOOGLE_CLOUD_API_KEY}
+      - SCRAPE_INTERVAL_HOURS=${SCRAPE_INTERVAL_HOURS:-24}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - .:/workspace
+
+volumes:
+  pgdata:
