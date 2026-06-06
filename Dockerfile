@@ -9,6 +9,9 @@ RUN npm run build
 # Stage 2: Python Web Server and Scraper Environment
 FROM mcr.microsoft.com/playwright/python:v1.41.2-jammy
 
+# Configure default timezone to PST
+ENV TZ=America/Los_Angeles
+
 WORKDIR /workspace
 
 COPY requirements.txt .

@@ -18,6 +18,7 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://flights_user:flights_pass@db:5432/flights_db}
       - GOOGLE_CLOUD_API_KEY=${GOOGLE_CLOUD_API_KEY}
       - SCRAPE_INTERVAL_HOURS=${SCRAPE_INTERVAL_HOURS:-24}
+      - TZ=America/Los_Angeles
     ports:
       - "8000:8000"
     depends_on:
