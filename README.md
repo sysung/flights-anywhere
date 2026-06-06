@@ -42,8 +42,37 @@ docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
   docker-compose up
   ```
   Unset `DATABASE_URL` to return to using the local PostgreSQL container.
-- **Production (Railway)**: Automatically binds to the provided database environment variable upon deploy.
+- **Production (Railway)**: Automatically binds to the provided database environment variable upon deploy. **Tip**: Use the internal `DATABASE_URL` (private networking) instead of `DATABASE_PUBLIC_URL` in your Railway settings to avoid egress fees.
 
+---
+
+## ☁️ Deployment Guide (Railway)
+
+Follow these steps to deploy this application to production using [Railway](https://railway.app):
+
+### 1. Provision Services
+1.  Log in to Railway and create a **New Project**.
+2.  Select **Provision PostgreSQL**.
+3.  Select **Deploy from GitHub repo** and connect this repository.
+
+### 2. Configure Environment Variables
+In your Railway **App** service settings, add the following variables:
+- `GOOGLE_CLOUD_API_KEY`: Your Gemini API key.
+- `DATABASE_URL`: Set this to `${{Postgres.DATABASE_URL}}` (This ensures you use the **private** internal network).
+- `TIMEZONE`: `America/Los_Angeles` (or your preferred PST timezone).
+
+### 3. Build & Launch
+Railway normally uses **Nixpacks** by default. To ensure it uses the `Dockerfile` and deploys automatically:
+
+1.  **Set Builder**: Go to **Settings > Build > Builder** in your App service and select **Dockerfile**.
+2.  **Enable Automatic Deploys**: Ensure **Settings > General > Automatic Deployments** is turned ON.
+3.  **Deploy via Push**: Once configured, every `git push` to your main branch will trigger a fresh build and deploy.
+4.  **Deploy via CLI (Optional)**: If you need to deploy local changes without pushing to GitHub, you can still use the CLI:
+    ```bash
+    railway up
+    ```
+
+*Note: The background scraper will automatically trigger its first run upon successful deployment.*
 
 ---
 
