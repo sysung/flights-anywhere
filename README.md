@@ -85,6 +85,29 @@ graph TD
 
 ---
 
+## 🧪 Multi-Environment Testing Strategy (Local vs Production)
+
+We have configured the environment settings to support testing both locally and directly against production variables without service conflicts:
+
+1. **Local Testing (Isolated DB)**:
+   - Run `docker-compose up` directly.
+   - The `app` service will fall back to using the local PostgreSQL container named `db` (`postgresql://flights_user:flights_pass@db:5432/flights_db`).
+
+2. **Local Testing against Production (Railway DB)**:
+   - To debug or read/write live production records locally, retrieve the public database connection URL from the Railway console under Postgres -> Connect.
+   - Set the connection string in your local `.env` file or export it in your shell:
+     ```bash
+     export DATABASE_URL="postgresql://postgres:password@acela.proxy.rlwy.net:46865/railway"
+     docker-compose up
+     ```
+   - Due to the dynamic configuration setup in `docker-compose.yml`, the local application container will immediately direct queries to the production database instead of the local container.
+
+3. **Production Run (Railway)**:
+   - Railway deploys the web service independently using the `Dockerfile` and does not run the `db` service container.
+   - Railway injects its internal production database connection variable `DATABASE_URL` directly, ensuring secure, fast internal networking without manual overrides.
+
+---
+
 ## 📝 Project Notes & Scalability (from notes.md)
 
 ### Goal
