@@ -1,145 +1,56 @@
-# Anywhere Flights - SFO Flights Search Engine & AI Assistant
+# SFO Anywhere Flights - Search & AI Assistant
 
 An intelligent flight discovery dashboard and AI Assistant enabling users to find the lowest flights from SFO (San Francisco) with flexible search criteria and natural language chat synchronization.
+
+🚀 **Live Deployed App URL**: [https://flights-anywhere-production.up.railway.app](https://flights-anywhere-production.up.railway.app)
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Set Up Environment Variables
-Copy the example environment file:
+### 1. Set Up Environment
+Copy the example environment file and insert your **`GOOGLE_CLOUD_API_KEY`**:
 ```bash
 cp .env.example .env
 ```
-Open the `.env` file and insert your API key for the Gemini chatbot:
-- **`GOOGLE_CLOUD_API_KEY`**: Your Gemini API Key (e.g. `AQ.Ab8RN...`)
 
-### 2. Build and Launch the Application
-Start all services (database, backend, and static file server) using Docker Compose:
+### 2. Run Locally (Docker Compose)
+Start the PostgreSQL database and FastAPI web server:
 ```bash
 docker-compose up --build
 ```
-Once the services are running, open your web browser and navigate to:
-👉 **`http://localhost:8000`**
+Access the local dashboard: **`http://localhost:8000`**
 
-### 3. Running Tests
-To run the automated Python database and extraction test suite:
+### 3. Run Automated Tests
 ```bash
 docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
 ```
 
 ---
 
-## ☁️ Cloud Deployment (Railway Integration)
+## 🧪 Multi-Environment Testing Strategy
 
-This project is configured for seamless deployment to **Railway** via containerization. 
-
-### 🚀 Automatic Deployment on Git Push
-
-Once you link your GitHub repository to your Railway service, **any push to the `main` branch will automatically build and redeploy your application**:
-
-1. **Commit and Push Changes**:
-   ```bash
-   git add -A
-   git commit -m "feat: updates"
-   git push origin main
-   ```
-
-2. **Automatic Build & Deploy**:
-   - Railway will automatically detect the commit, read the `Dockerfile`, rebuild the React frontend, and deploy the new version of your FastAPI web server.
-
-### Required Environment Variables on Railway:
-Ensure these variables are set in your Railway service settings:
-- **`DATABASE_URL`**: Reference to your PostgreSQL container connection string (e.g., `${{Postgres.DATABASE_URL}}`).
-- **`GOOGLE_CLOUD_API_KEY`**: Your Gemini API Key (for the `gemini-3.1-flash-lite` chatbot).
-- **`SCRAPE_INTERVAL_HOURS`**: `24`
+- **Local Development**: Runs `docker-compose up`. The web application automatically connects to the isolated local PostgreSQL container.
+- **Local Testing against Production (Railway DB)**: Set the `DATABASE_URL` env variable to your Railway public database connection string. The local app service will dynamically connect to the production database:
+  ```bash
+  export DATABASE_URL="postgresql://postgres:REDACTED@acela.proxy.rlwy.net:46865/railway"
+  docker-compose up
+  ```
+- **Production (Railway)**: The container is deployed via `Dockerfile` and securely binds to the internal database port automatically. Pushing commits to `main` branch redeploys the service.
 
 ---
 
 ## 🏗️ System Architecture
 
-The project consists of three main components:
-- **Frontend (React + Vite + MUI)**: Responsive split-pane dashboard. Renders an interactive flight listings table, quick filtering cards, active AI search chips, and the AI conversational chatbot panel.
-- **Backend (FastAPI)**: Web server serving active flight database endpoints (`/api/flights`), pipeline audit logs (`/api/scraper/status`), conversational agent routing (`/api/chat`), and hosting compiled React assets.
-- **Database (PostgreSQL)**: Stores flight details, scraper logs, and airport structures.
-
-```mermaid
-graph TD
-    User([User / Browser]) -->|HTTP / JSON| API[FastAPI Web Server /app]
-    API -->|Read/Write| DB[(PostgreSQL /db)]
-    
-    subgraph Container: app
-        API
-        Scheduler[Background Scheduler] -->|Triggers| Scraper[Playwright Scraper]
-        Scraper -->|Ingests Stage| DB
-        Agent[AI Chatbot Agent] -->|Queries / Filters| DB
-        API -->|Delegates Chat| Agent
-    end
-    
-    subgraph Container: db
-        DB
-    end
-    
-    Scraper -->|Scrapes| GF((Google Flights))
-```
+- **Frontend (React + MUI)**: Responsive split-pane dashboard. Displays the flight data grid, active filters chips, and the Gemini-powered AI chatbot assistant.
+- **Backend (FastAPI)**: REST endpoints (`/api/flights`, `/api/scraper/status`, `/api/chat`) and serves compiled React assets.
+- **Scraper (Playwright)**: Scheduled crawler intercepting Google Flights stream results to ingest routes.
+- **Database (PostgreSQL)**: Managed OLTP store for flights and scraper logs.
 
 ---
 
-## 🧪 Multi-Environment Testing Strategy (Local vs Production)
+## 📝 Scalability Notes
 
-We have configured the environment settings to support testing both locally and directly against production variables without service conflicts:
-
-1. **Local Testing (Isolated DB)**:
-   - Run `docker-compose up` directly.
-   - The `app` service will fall back to using the local PostgreSQL container named `db` (`postgresql://flights_user:flights_pass@db:5432/flights_db`).
-
-2. **Local Testing against Production (Railway DB)**:
-   - To debug or read/write live production records locally, retrieve the public database connection URL from the Railway console under Postgres -> Connect.
-   - Set the connection string in your local `.env` file or export it in your shell:
-     ```bash
-     export DATABASE_URL="postgresql://postgres:password@acela.proxy.rlwy.net:46865/railway"
-     docker-compose up
-     ```
-   - Due to the dynamic configuration setup in `docker-compose.yml`, the local application container will immediately direct queries to the production database instead of the local container.
-
-3. **Production Run (Railway)**:
-   - Railway deploys the web service independently using the `Dockerfile` and does not run the `db` service container.
-   - Railway injects its internal production database connection variable `DATABASE_URL` directly, ensuring secure, fast internal networking without manual overrides.
-
----
-
-## 📝 Project Notes & Scalability (from notes.md)
-
-### Goal
-Create a flights search engine focusing on the "anywhere" discovery feature (initially from SFO), allowing users to find the lowest prices with flexible criteria and date options.
-
-### User Requirements
-- **Origin:** Fixed to San Francisco International Airport (SFO) for the PoC.
-- **Date Range:** Flexible travel dates (initially restricted to the next 30 days to limit scraping load).
-- **Advanced Filters:**
-  - Maximum price.
-  - Airline preferences.
-  - Country inclusion/exclusion.
-  - Duration/length of stay (e.g., number of days/weeks).
-- **Interface:** A clean, responsive Web UI to search, filter, and discover flight options.
-- **AI Chatbot:** An AI-Agentic chatbot implemented to execute agentic workflows on top of active filters.
-
-### Architecture & PoC Constraints
-- **Data Source:** Playwright scraper harvesting Google Flights data for all outgoing SFO flights within the next month.
-  - *Why standard flight APIs aren't viable:* Commercial options (Amadeus, Sabre) charge steep transactional GDS fees, return stale cached prices in sandbox environments, and have rigid schemas that prevent flexible "anywhere" queries.
-  - *Why Google Flights is difficult:* Google actively obfuscates payloads using internal binary Protobuf RPCs, implements dynamic Wiz DOM selector changes, and enforces aggressive anti-bot rate limiting.
-  - *PoC Approach & Date Constraint:* We use a Playwright browser automation scraper targeting the Google Flights Explore page. Since Google Flights Explore requires explicit date parameters, the PoC restricts searches to a predefined explicit date range (departing in 14 days, returning in 21 days).
-
-### Scalability Issues & Future Solutions (Post-PoC)
-1. **Scraper Rate Limiting & Captchas:**
-   - *PoC Limit:* Google Flights will rate-limit or block a single server IP if scraped aggressively.
-   - *Scalability Solution:* Use residential proxy rotators, stealth plugins, and user-agent rotation. In production, transition to a paid aggregator API (like SerpApi or Skyscanner) or establish airline data feeds.
-2. **Data Volume & Scraping Scope:**
-   - *PoC Limit:* Limited to SFO flights for the next 30 days.
-   - *Scalability Solution:* To expand to multiple origins and longer horizons (e.g., 3-6 months), replace the brute-force scraper with a message queue (like RabbitMQ/Celery) running distributed scraping workers.
-3. **Database Performance:**
-   - *PoC Limit:* Basic PostgreSQL database.
-   - *Scalability Solution:* As routes and historical prices grow, implement database indexing on `(origin, destination, departure_date, price)`, partitioning by date ranges, and caching popular queries using Redis.
-4. **Orchestration Complexity:**
-   - *PoC Limit:* Simple scheduling within a task runner.
-   - *Scalability Solution:* Transition to a full production orchestrator like Apache Airflow or Prefect to manage complex dependencies, retries, and data transformations via dbt.
+- **Anti-Bot Protections**: Transition to residential proxy rotators or aggregator APIs in production.
+- **Data Scaling**: Migrate background tasks to a distributed task queue (e.g. Celery + RabbitMQ) to support multiple origins.
+- **DB Indexing**: Implement indexes on `(origin, destination, departure_date, price)` and partition tables by date ranges for high-concurrency queries.
