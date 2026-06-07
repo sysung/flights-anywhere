@@ -79,6 +79,7 @@ app.add_middleware(
 def get_flights(
     max_price: Optional[float] = None,
     airlines: Optional[str] = None,
+    trip_lengths: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -93,6 +94,21 @@ def get_flights(
         airline_list = [a.strip() for a in airlines.split(",") if a.strip()]
         if airline_list:
             query = query.filter(Flight.airline.in_(airline_list))
+
+    if trip_lengths:
+        try:
+            lengths = [int(l.strip()) for l in trip_lengths.split(",") if l.strip()]
+            if lengths:
+                from sqlalchemy import func
+                # Using SQLite/Postgres compatible date difference logic
+                # For SQLite: julianday(return_date) - julianday(departure_date)
+                # For Postgres: return_date - departure_date
+                if "sqlite" in str(db.get_bind().url):
+                    query = query.filter(func.julianday(Flight.return_date) - func.julianday(Flight.departure_date).in_(lengths))
+                else:
+                    query = query.filter((Flight.return_date - Flight.departure_date).in_(lengths))
+        except Exception as e:
+            logger.error(f"Failed to apply trip_lengths filter: {e}")
             
     flights = query.order_by(Flight.price.asc()).all()
     return flights

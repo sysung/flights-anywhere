@@ -34,6 +34,7 @@ class Flight(Base):
 # Index setup
 Index('idx_flights_search', Flight.origin, Flight.departure_date, Flight.price, postgresql_where=(Flight.delete_indicator == 0))
 Index('idx_flights_dest', Flight.destination, Flight.delete_indicator)
+Index('idx_flights_full_search', Flight.origin, Flight.destination, Flight.departure_date, Flight.return_date)
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"

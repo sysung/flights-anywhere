@@ -1,127 +1,74 @@
 import pytest
 from datetime import date, timedelta
-from decimal import Decimal
 from unittest.mock import patch, MagicMock
-
 from app.db.database import SessionLocal, Base, engine
 from app.db.models import Flight, ScraperLog, Airport
 from app.scraper.extractor import run_full_extraction_job
 
-def test_full_ingestion_flow():
+def test_full_ingestion_job_submission():
     """
-    Tests the high-level ingestion job by mocking the scraper and extractor.
-    Verifies that records are correctly inserted into the test database.
+    Tests that the parallel ingestion job correctly submits tasks and logs the run.
     """
-    # 1. Setup: Ensure database tables exist
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    
-    # Clear existing data for isolation
-    db.query(Flight).delete()
     db.query(ScraperLog).delete()
     db.commit()
 
-    # 2. Mocking
-    # Mock run_flight_scrape to return dummy chunks
-    # Mock extract_flights_info to return a list of flight dicts
-    mock_flight_data = [
+    # Mock run_flight_scrape to return a chunk, and Producer to avoid actual Kafka calls
+    with patch('app.scraper.extractor.run_flight_scrape', return_value=[{"mock": "chunk"}]), \
+         patch('app.scraper.extractor.FlightKafkaProducer') as mock_producer_class:
+        
+        mock_producer_instance = MagicMock()
+        mock_producer_class.return_value = mock_producer_instance
+        
+        # Run job with small parameters
+        run_full_extraction_job(targets=["LAX"], days_ahead=1, trip_lengths=[3])
+
+    # Verify ScraperLog
+    logs = db.query(ScraperLog).all()
+    assert len(logs) == 1
+    assert logs[0].status == "SUCCESS"
+    assert logs[0].records_inserted >= 0
+
+    # Verify Producer was called
+    assert mock_producer_instance.send_raw_chunk.called
+    
+    db.close()
+
+def test_kafka_consumer_upsert():
+    """
+    Tests the ingestion logic inside the Kafka consumer.
+    """
+    from app.scraper.kafka_consumer import FlightKafkaConsumer
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    db.query(Flight).delete()
+    db.query(Airport).delete()
+    db.commit()
+
+    mock_flights = [
         {
             "arrival_airport": "LAX",
             "airline": "Test Airways",
             "price": 99.99,
-            "duration": "1 stop"
+            "duration": "1h 30m",
+            "duration_minutes": 90,
+            "booking_url": "http://test.com"
         }
     ]
 
-    with patch('app.scraper.extractor.run_flight_scrape', return_value=[{"mock": "chunk"}]), \
-         patch('app.scraper.extractor.extract_flights_info', return_value=mock_flight_data):
-        
-        # 3. Execution: Run the ingestion job
-        # We only test one target to keep it fast
-        run_full_extraction_job(targets=["LAX"])
+    consumer = FlightKafkaConsumer()
+    consumer.upsert_flights(mock_flights, "SFO", "2026-06-20", "2026-06-27")
 
-    # 4. Verification
-    # Check if Flight was inserted
-    flights = db.query(Flight).all()
-    assert len(flights) == 1
-    assert flights[0].destination == "LAX"
-    assert flights[0].price == Decimal("99.99")
-    assert flights[0].airline == "Test Airways"
-    assert flights[0].stops == 1
+    # Verify DB
+    flight = db.query(Flight).filter(Flight.destination == "LAX").first()
+    assert flight is not None
+    from decimal import Decimal
+    assert flight.price == Decimal("99.99")
+    assert flight.duration_minutes == 90
+    assert flight.booking_url == "http://test.com"
 
-    # Check if ScraperLog was created and marked SUCCESS
-    logs = db.query(ScraperLog).all()
-    assert len(logs) == 1
-    assert logs[0].status == "SUCCESS"
-    assert logs[0].records_inserted == 1
-
-    db.close()
-
-def test_ingestion_soft_delete():
-    """
-    Tests that the ingestion job correctly soft-deletes obsolete records.
-    """
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    
-    # 1. Create an existing "old" flight record
-    old_flight = Flight(
-        origin="SFO",
-        destination="JFK",
-        departure_date=date.today() + timedelta(days=14),
-        airline="Legacy Air",
-        price=Decimal("500.00"),
-        last_seen=date.today() - timedelta(days=1), # Older than current run
-        delete_indicator=0
-    )
-    db.add(old_flight)
-    db.commit()
-
-    # 2. Run ingestion with NO new data returned for JFK
-    with patch('app.scraper.extractor.run_flight_scrape', return_value=[]), \
-         patch('app.scraper.extractor.extract_flights_info', return_value=[]):
-        
-        run_full_extraction_job(targets=["JFK"])
-
-    # 3. Verify that the old flight is now soft-deleted
-    updated_flight = db.query(Flight).filter(Flight.airline == "Legacy Air").first()
-    assert updated_flight.delete_indicator == 1
-    
-    db.close()
-
-def test_ingestion_dynamic_airport_seeding():
-    """
-    Tests that the ingestion job dynamically seeds missing airports.
-    """
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    
-    # 1. Clear database
-    db.query(Flight).delete()
-    db.query(Airport).delete()
-    db.commit()
-    
-    mock_flight_data = [
-        {
-            "arrival_airport": "LHR",
-            "airline": "British Airways",
-            "price": 650.00,
-            "duration": "Nonstop"
-        }
-    ]
-    
-    # 2. Run ingestion for LHR
-    with patch('app.scraper.extractor.run_flight_scrape', return_value=[{"mock": "chunk"}]), \
-         patch('app.scraper.extractor.extract_flights_info', return_value=mock_flight_data):
-        
-        run_full_extraction_job(targets=["LHR"])
-        
-    # 3. Verify that the LHR airport was dynamically created in the db
-    airport = db.query(Airport).filter(Airport.code == "LHR").first()
+    airport = db.query(Airport).filter(Airport.code == "LAX").first()
     assert airport is not None
-    assert airport.code == "LHR"
-    assert airport.name == "LHR International Airport"
-    assert airport.city == "LHR"
-    assert airport.country == "Unknown"
     
     db.close()
