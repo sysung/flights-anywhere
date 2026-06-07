@@ -12,6 +12,7 @@ class FlightOut(BaseModel):
     price: Decimal
     airline: str
     stops: int
+    city: Optional[str] = None
 
     @computed_field
     @property

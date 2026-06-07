@@ -5,9 +5,10 @@ from app.db.database import Base
 class Airport(Base):
     __tablename__ = "airports"
     code = Column(String(3), primary_key=True)
-    name = Column(String(255), nullable=False)
-    city = Column(String(255), nullable=False)
-    country = Column(String(255), nullable=False)
+    name = Column(String(200), nullable=False)
+    city = Column(String(100), nullable=False)
+    city_code = Column(String(10))
+    country = Column(String(100), nullable=False)
     is_international = Column(Boolean, default=True)
     latitude = Column(Numeric(9, 6))
     longitude = Column(Numeric(9, 6))

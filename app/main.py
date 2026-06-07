@@ -80,11 +80,16 @@ def get_flights(
     max_price: Optional[float] = None,
     airlines: Optional[str] = None,
     trip_lengths: Optional[str] = None,
+    destination: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
     Returns active SFO flight options matching filter criteria.
     """
+    from app.db.models import Airport
+    from sqlalchemy.orm import joinedload
+    
+    # We use a join to get the city name from the airports table
     query = db.query(Flight).filter(Flight.delete_indicator == 0)
     
     if max_price is not None:
@@ -95,22 +100,41 @@ def get_flights(
         if airline_list:
             query = query.filter(Flight.airline.in_(airline_list))
 
+    if destination:
+        # Check if the destination is a city name or an airport code
+        related_airports = db.query(Airport.code).filter(
+            (Airport.city.ilike(f"%{destination}%")) | 
+            (Airport.city_code.ilike(destination)) |
+            (Airport.code.ilike(destination))
+        ).all()
+        
+        if related_airports:
+            codes = [r[0] for r in related_airports]
+            query = query.filter(Flight.destination.in_(codes))
+        else:
+            query = query.filter(Flight.destination == destination.upper())
+
     if trip_lengths:
         try:
             lengths = [int(l.strip()) for l in trip_lengths.split(",") if l.strip()]
             if lengths:
                 from sqlalchemy import func
-                # Using SQLite/Postgres compatible date difference logic
-                # For SQLite: julianday(return_date) - julianday(departure_date)
-                # For Postgres: return_date - departure_date
                 if "sqlite" in str(db.get_bind().url):
-                    query = query.filter(func.julianday(Flight.return_date) - func.julianday(Flight.departure_date).in_(lengths))
+                    query = query.filter((func.julianday(Flight.return_date) - func.julianday(Flight.departure_date)).in_(lengths))
                 else:
                     query = query.filter((Flight.return_date - Flight.departure_date).in_(lengths))
         except Exception as e:
             logger.error(f"Failed to apply trip_lengths filter: {e}")
             
     flights = query.order_by(Flight.price.asc()).all()
+    
+    # Add city names to the response objects
+    # This is a bit manual since we didn't add a formal relationship yet
+    for f in flights:
+        airport = db.query(Airport).filter(Airport.code == f.destination).first()
+        if airport:
+            f.city = airport.city
+            
     return flights
 
 @app.get("/api/scraper/status", response_model=List[ScraperLogOut])
