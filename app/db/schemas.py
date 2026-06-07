@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Optional
 from decimal import Decimal
 
 class FlightOut(BaseModel):
@@ -12,7 +12,14 @@ class FlightOut(BaseModel):
     price: Decimal
     airline: str
     stops: int
-    booking_url: str
+
+    @computed_field
+    @property
+    def booking_url(self) -> str:
+        url = f"https://www.google.com/travel/flights?q=Flights%20from%20{self.origin}%20to%20{self.destination}%20on%20{self.departure_date}"
+        if self.return_date:
+            url += f"%20returning%20{self.return_date}"
+        return url
     
     model_config = {
         "from_attributes": True
@@ -26,3 +33,7 @@ class ScraperLogOut(BaseModel):
     records_updated: int
     records_soft_deleted: int
     error_message: Optional[str]
+
+    model_config = {
+        "from_attributes": True
+    }

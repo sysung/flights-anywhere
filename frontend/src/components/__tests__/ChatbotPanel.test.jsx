@@ -1,26 +1,25 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ChatbotPanel from '../ChatbotPanel';
+import { useFlights } from '@/context/FlightsContext';
 
-test('submitting a prompt triggers onSendMessage callback', () => {
-  const handleSendMessage = vi.fn();
-  const messages = [
-    { sender: 'agent', text: 'Hello! How can I help you today?' }
-  ];
+const mockSendMessage = vi.fn();
+vi.mock('@/context/FlightsContext', () => ({
+  useFlights: () => ({
+    chatMessages: [{ sender: 'agent', text: 'Hello! How can I help you today?' }],
+    handleSendChat: mockSendMessage,
+    sendingChat: false,
+    maxPrice: 2000,
+    setMaxPrice: vi.fn(),
+    destinationFilter: '',
+    setDestinationFilter: vi.fn(),
+    selectedAirlines: [],
+    setSelectedAirlines: vi.fn()
+  })
+}));
 
-  render(
-    <ChatbotPanel
-      messages={messages}
-      onSendMessage={handleSendMessage}
-      sending={false}
-      maxPrice={2000}
-      setMaxPrice={vi.fn()}
-      destinationFilter=""
-      setDestinationFilter={vi.fn()}
-      selectedAirlines={[]}
-      setSelectedAirlines={vi.fn()}
-    />
-  );
+test('submitting a prompt triggers handleSendChat callback from context', () => {
+  render(<ChatbotPanel />);
 
   // Check assistant message is in the document
   expect(screen.getByText('Hello! How can I help you today?')).toBeInTheDocument();
@@ -33,5 +32,5 @@ test('submitting a prompt triggers onSendMessage callback', () => {
   fireEvent.submit(form);
 
   // Check callback was triggered with the input query
-  expect(handleSendMessage).toHaveBeenCalledWith('Flights to London under $800');
+  expect(mockSendMessage).toHaveBeenCalledWith('Flights to London under $800');
 });

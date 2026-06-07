@@ -12,20 +12,24 @@ import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
+import { useFlights } from '@/context/FlightsContext';
 
 const ChatbotPanel = ({
-  messages,
-  onSendMessage,
-  sending,
-  maxPrice,
-  setMaxPrice,
-  destinationFilter,
-  setDestinationFilter,
-  selectedAirlines,
-  setSelectedAirlines,
   isDrawer = false,
   onClose
 }) => {
+  const {
+    chatMessages: messages,
+    handleSendChat: onSendMessage,
+    sendingChat: sending,
+    maxPrice,
+    setMaxPrice,
+    destinationFilter,
+    setDestinationFilter,
+    selectedAirlines,
+    setSelectedAirlines
+  } = useFlights();
+
   const [input, setInput] = useState('');
   const chatEndRef = useRef(null);
 

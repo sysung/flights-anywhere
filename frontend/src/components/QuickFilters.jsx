@@ -9,19 +9,22 @@ import {
   Autocomplete
 } from '@mui/material';
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
+import { useFlights } from '@/context/FlightsContext';
 
-const QuickFilters = ({
-  maxPrice,
-  setMaxPrice,
-  maxPossiblePrice,
-  destinationFilter,
-  setDestinationFilter,
-  selectedAirlines,
-  setSelectedAirlines,
-  availableDestinations,
-  availableAirlines,
-  onReset
-}) => {
+const QuickFilters = () => {
+  const {
+    maxPrice,
+    setMaxPrice,
+    maxPossiblePrice,
+    destinationFilter,
+    setDestinationFilter,
+    selectedAirlines,
+    setSelectedAirlines,
+    availableDestinations,
+    availableAirlines,
+    handleResetFilters: onReset
+  } = useFlights();
+
   return (
     <div className="bg-bg-slate p-6 border-l-4 border-slate-500 shadow-md rounded-xl flex flex-col gap-4">
       <div className="flex justify-between items-center">
@@ -63,17 +66,20 @@ const QuickFilters = ({
             onInputChange={(event, newInputValue) => {
               setDestinationFilter(newInputValue.toUpperCase());
             }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder="Anywhere"
-                inputProps={{
-                  ...params.inputProps,
-                  maxLength: 3,
-                  className: "uppercase font-bold"
-                }}
-              />
-            )}
+            renderInput={(params) => {
+              const { inputProps, ...restParams } = params;
+              return (
+                <TextField
+                  {...restParams}
+                  placeholder="Anywhere"
+                  inputProps={{
+                    ...inputProps,
+                    maxLength: 3,
+                    className: "uppercase font-bold"
+                  }}
+                />
+              );
+            }}
           />
         </div>
 
@@ -97,13 +103,17 @@ const QuickFilters = ({
               />
             )}
             renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                <Chip
-                  label={option}
-                  size="small"
-                  {...getTagProps({ index })}
-                />
-              ))
+              value.map((option, index) => {
+                const { key, ...tagProps } = getTagProps({ index });
+                return (
+                  <Chip
+                    key={key || option}
+                    label={option}
+                    size="small"
+                    {...tagProps}
+                  />
+                );
+              })
             }
           />
         </div>
