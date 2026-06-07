@@ -73,7 +73,7 @@ def find_price_in_flight(flight):
     return None
 
 
-def extract_flights_info(parsed_chunks):
+def extract_flights_info(parsed_chunks, origin=None, dest=None, dep_date=None, ret_date=None):
     """Extract flight details from parsed stream chunks and return a list of dicts."""
     flights_list = extract_flights_list(parsed_chunks)
     if not flights_list:
@@ -92,10 +92,15 @@ def extract_flights_info(parsed_chunks):
             dep_time = format_time_array(details[5])
             arr_airport = details[6]
             arr_time = format_time_array(details[8])
-            duration = details[9]
+            duration = details[9] # Total travel time in minutes
             duration_str = f"{duration // 60}h {duration % 60}m" if isinstance(duration, int) else "Unknown"
             price = find_price_in_flight(flight)
             
+            # Generate fallback booking URL
+            booking_url = f"https://www.google.com/travel/flights?q=Flights%20to%20{dest or arr_airport}%20from%20{origin or dep_airport}%20on%20{dep_date or ''}"
+            if ret_date:
+                booking_url += f"%20returning%20{ret_date}"
+
             extracted_flights.append({
                 "index": idx + 1,
                 "airline": airline_name,
@@ -105,7 +110,9 @@ def extract_flights_info(parsed_chunks):
                 "arrival_airport": arr_airport,
                 "arrival_time": arr_time,
                 "duration": duration_str,
-                "price": price
+                "duration_minutes": duration if isinstance(duration, int) else 0,
+                "price": price,
+                "booking_url": booking_url
             })
         except Exception as e:
             logger.debug(f"Failed extracting item at index {idx}: {e}")

@@ -39,7 +39,7 @@ def run_full_extraction_job(targets=None):
             logger.info(f"Scraping SFO to {dest} (dep: {dep_date}, ret: {ret_date})...")
             try:
                 chunks = run_flight_scrape("SFO", dest, dep_date, ret_date)
-                flights_list = extract_flights_info(chunks)
+                flights_list = extract_flights_info(chunks, origin="SFO", dest=dest, dep_date=dep_date, ret_date=ret_date)
                 
                 logger.info(f"Extracted {len(flights_list)} flights for route SFO -> {dest}")
                 
@@ -79,6 +79,8 @@ def run_full_extraction_job(targets=None):
                     
                     if existing_flight:
                         existing_flight.price = price_val
+                        existing_flight.duration_minutes = f.get("duration_minutes", 0)
+                        existing_flight.booking_url = f.get("booking_url")
                         existing_flight.last_seen = run_start
                         existing_flight.delete_indicator = 0
                         updated += 1
@@ -91,6 +93,8 @@ def run_full_extraction_job(targets=None):
                             price=price_val,
                             airline=f["airline"],
                             stops=stops_val,
+                            duration_minutes=f.get("duration_minutes", 0),
+                            booking_url=f.get("booking_url"),
                             last_seen=run_start,
                             delete_indicator=0
                         )
