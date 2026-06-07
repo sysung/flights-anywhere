@@ -13,15 +13,22 @@ const FlightsGrid = ({ flights, loading }) => {
     { 
       field: 'destination', 
       headerName: 'To', 
-      width: 100,
+      width: 150,
       renderCell: (params) => (
-        <Chip 
-          label={params.value} 
-          color="primary" 
-          variant="outlined" 
-          size="small" 
-          className="font-bold"
-        />
+        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Chip 
+            label={params.value} 
+            color="primary" 
+            variant="outlined" 
+            size="small" 
+            className="font-bold mb-1"
+          />
+          {params.row.city && (
+            <Typography variant="caption" className="text-gray-500 italic">
+              {params.row.city}
+            </Typography>
+          )}
+        </Box>
       )
     },
     { 
