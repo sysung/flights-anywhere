@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Boolean, Numeric, Integer, Date, DateTime, Text, Index
-from datetime import datetime
+from datetime import datetime, timezone
 from app.db.database import Base
 
 class Airport(Base):
@@ -11,7 +11,7 @@ class Airport(Base):
     is_international = Column(Boolean, default=True)
     latitude = Column(Numeric(9, 6))
     longitude = Column(Numeric(9, 6))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class Flight(Base):
     __tablename__ = "flights"
@@ -26,9 +26,9 @@ class Flight(Base):
     stops = Column(Integer, default=0)
     duration_minutes = Column(Integer)
     delete_indicator = Column(Integer, default=0)
-    last_seen = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 # Index setup
 Index('idx_flights_search', Flight.origin, Flight.departure_date, Flight.price, postgresql_where=(Flight.delete_indicator == 0))
@@ -37,7 +37,7 @@ Index('idx_flights_dest', Flight.destination, Flight.delete_indicator)
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     completed_at = Column(DateTime)
     status = Column(String(20), nullable=False)  # 'RUNNING', 'SUCCESS', 'FAILED'
     records_inserted = Column(Integer, default=0)

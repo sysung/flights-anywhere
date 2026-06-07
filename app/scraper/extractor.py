@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from app.db.database import SessionLocal
 from app.db.models import Flight, Airport, ScraperLog
@@ -25,7 +25,7 @@ def run_full_extraction_job(targets=None):
     db.add(log)
     db.commit()
     
-    run_start = datetime.utcnow()
+    run_start = datetime.now(timezone.utc).replace(tzinfo=None)
     
     # We will target a fixed date window for our PoC (e.g. departing in 14 days, returning in 21 days)
     dep_date = (date.today() + timedelta(days=14)).strftime("%Y-%m-%d")
@@ -49,7 +49,16 @@ def run_full_extraction_job(targets=None):
                     # 1. Dynamic Airport Ingestion
                     existing_airport = db.query(Airport).filter(Airport.code == airport_code).first()
                     if not existing_airport:
-                        logger.info(f"Airport {airport_code} does not exist in database. Skipping dynamic seeding.")
+                        logger.info(f"Airport {airport_code} does not exist in database. Dynamically seeding.")
+                        new_airport = Airport(
+                            code=airport_code,
+                            name=f"{airport_code} International Airport",
+                            city=airport_code,
+                            country="Unknown",
+                            is_international=True
+                        )
+                        db.add(new_airport)
+                        db.commit()
                     
                     # 2. Upsert Flight Listing
                     existing_flight = db.query(Flight).filter(
@@ -100,7 +109,7 @@ def run_full_extraction_job(targets=None):
         db.commit()
         
         log.status = "SUCCESS"
-        log.completed_at = datetime.utcnow()
+        log.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         log.records_inserted = inserted
         log.records_updated = updated
         log.records_soft_deleted = soft_deleted
@@ -110,7 +119,7 @@ def run_full_extraction_job(targets=None):
     except Exception as e:
         db.rollback()
         log.status = "FAILED"
-        log.completed_at = datetime.utcnow()
+        log.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         log.error_message = str(e)
         db.commit()
         logger.error(f"Ingestion pipeline encountered critical error: {e}")
