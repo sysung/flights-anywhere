@@ -20,8 +20,11 @@ const QuickFilters = () => {
     setDestinationFilter,
     selectedAirlines,
     setSelectedAirlines,
+    selectedTripLengths,
+    setSelectedTripLengths,
     availableDestinations,
     availableAirlines,
+    availableTripLengths,
     handleResetFilters: onReset
   } = useFlights();
 
@@ -118,6 +121,42 @@ const QuickFilters = () => {
           />
         </div>
 
+        {/* Trip Length Multi-Select Autocomplete */}
+        <div className="w-48 flex-shrink-0">
+          <p className="text-sm font-medium text-text-secondary mb-1.5">
+            Trip Length (Days)
+          </p>
+          <Autocomplete
+            multiple
+            size="small"
+            options={availableTripLengths}
+            getOptionLabel={(option) => `${option} days`}
+            value={selectedTripLengths}
+            onChange={(event, newValue) => {
+              setSelectedTripLengths(newValue);
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Any Duration"
+              />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => {
+                const { key, ...tagProps } = getTagProps({ index });
+                return (
+                  <Chip
+                    key={key || option}
+                    label={`${option}d`}
+                    size="small"
+                    {...tagProps}
+                  />
+                );
+              })
+            }
+          />
+        </div>
+
         {/* Outlined Red Reset Button */}
         <div className="flex-shrink-0">
           <Button
@@ -125,7 +164,7 @@ const QuickFilters = () => {
             color="error"
             startIcon={<FilterAltOffIcon />}
             onClick={onReset}
-            disabled={!(maxPrice < maxPossiblePrice || selectedAirlines.length > 0 || destinationFilter)}
+            disabled={!(maxPrice < maxPossiblePrice || selectedAirlines.length > 0 || selectedTripLengths.length > 0 || destinationFilter)}
             className="h-10 px-6 rounded-lg"
           >
             Clear Filters

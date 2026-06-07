@@ -12,9 +12,11 @@ export const FlightsProvider = ({ children }) => {
   const [maxPrice, setMaxPrice] = useState(2000);
   const [maxPossiblePrice, setMaxPossiblePrice] = useState(2000);
   const [selectedAirlines, setSelectedAirlines] = useState([]);
+  const [selectedTripLengths, setSelectedTripLengths] = useState([]);
   const [destinationFilter, setDestinationFilter] = useState('');
   const [availableAirlines, setAvailableAirlines] = useState([]);
   const [availableDestinations, setAvailableDestinations] = useState([]);
+  const [availableTripLengths, setAvailableTripLengths] = useState([]);
   const isInitialLoad = useRef(true);
 
   const [chatMessages, setChatMessages] = useState([
@@ -36,6 +38,16 @@ export const FlightsProvider = ({ children }) => {
         setAvailableAirlines(airlines);
         const destinations = [...new Set(data.map(f => f.destination.toUpperCase()))].sort();
         setAvailableDestinations(destinations);
+        
+        const tripLengths = [...new Set(data.map(f => {
+          if (!f.return_date || !f.departure_date) return null;
+          const dep = new Date(f.departure_date);
+          const ret = new Date(f.return_date);
+          const diffTime = Math.abs(ret - dep);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return diffDays;
+        }))].filter(l => l !== null).sort((a, b) => a - b);
+        setAvailableTripLengths(tripLengths);
         
         if (data.length > 0) {
           const prices = data.map(f => parseFloat(f.price));
@@ -92,9 +104,18 @@ export const FlightsProvider = ({ children }) => {
       if (parseFloat(flight.price) > maxPrice) return false;
       if (selectedAirlines.length > 0 && !selectedAirlines.includes(flight.airline)) return false;
       if (destinationFilter && flight.destination.toUpperCase() !== destinationFilter.toUpperCase()) return false;
+      
+      if (selectedTripLengths.length > 0) {
+        if (!flight.return_date || !flight.departure_date) return false;
+        const dep = new Date(flight.departure_date);
+        const ret = new Date(flight.return_date);
+        const diffTime = Math.abs(ret - dep);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (!selectedTripLengths.includes(diffDays)) return false;
+      }
       return true;
     });
-  }, [flights, maxPrice, selectedAirlines, destinationFilter]);
+  }, [flights, maxPrice, selectedAirlines, destinationFilter, selectedTripLengths]);
 
   const handleSendChat = async (userMsg) => {
     setChatMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
@@ -137,6 +158,7 @@ export const FlightsProvider = ({ children }) => {
   const handleResetFilters = () => {
     setMaxPrice(maxPossiblePrice);
     setSelectedAirlines([]);
+    setSelectedTripLengths([]);
     setDestinationFilter('');
   };
 
