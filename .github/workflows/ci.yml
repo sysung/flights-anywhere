@@ -39,7 +39,7 @@ jobs:
         run: |
           npm run test --prefix frontend
 
-      - name: Run Tests
+      - name: Run Backend Tests
         env:
           DATABASE_URL: sqlite:///
           PYTHONPATH: .
