@@ -7,10 +7,10 @@ from contextlib import asynccontextmanager
 import os
 import logging
 
-from app.db.database import get_db, Base, engine
-from app.db.models import Flight, ScraperLog
+from db.database import get_db, Base, engine
+from db.models import Flight, ScraperLog
 from app.core.config import settings
-from app.db.schemas import FlightOut, ScraperLogOut
+from db.schemas import FlightOut, ScraperLogOut
 from app.scraper.extractor import run_full_extraction_job
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,11 @@ async def lifespan(app: FastAPI):
         logger.info("Initializing database tables...")
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized successfully.")
+        
+        # Initial Seed
+        from app.scraper.seed_airports import seed_airports
+        seed_airports()
+        
     except Exception as e:
         logger.error(f"CRITICAL: Failed to initialize database tables: {e}")
 
@@ -86,7 +91,7 @@ def get_flights(
     """
     Returns active SFO flight options matching filter criteria.
     """
-    from app.db.models import Airport
+    from db.models import Airport
     from sqlalchemy.orm import joinedload
     
     # We use a join to get the city name from the airports table

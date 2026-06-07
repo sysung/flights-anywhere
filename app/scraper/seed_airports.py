@@ -1,6 +1,6 @@
 import logging
-from app.db.database import SessionLocal
-from app.db.models import Airport
+from db.database import SessionLocal
+from db.models import Airport
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)

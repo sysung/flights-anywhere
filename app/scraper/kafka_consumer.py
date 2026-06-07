@@ -3,8 +3,8 @@ import logging
 import os
 from confluent_kafka import Consumer, KafkaError
 from app.scraper.extractor_utils import extract_flights_info
-from app.db.database import SessionLocal
-from app.db.models import Flight, Airport
+from db.database import SessionLocal
+from db.models import Flight, Airport
 from datetime import datetime
 from decimal import Decimal
 

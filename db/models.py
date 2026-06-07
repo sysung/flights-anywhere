@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Boolean, Numeric, Integer, Date, DateTime, Text, Index
 from datetime import datetime, timezone
-from app.db.database import Base
+from db.database import Base
 
 class Airport(Base):
     __tablename__ = "airports"

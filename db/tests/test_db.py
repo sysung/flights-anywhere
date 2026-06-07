@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
-from app.db.database import Base
-from app.db.models import Airport, Flight, ScraperLog
+from db.database import Base
+from db.models import Airport, Flight, ScraperLog
 
 # Configure a test database session
 engine = create_engine(settings.database_url)

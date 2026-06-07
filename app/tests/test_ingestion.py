@@ -1,8 +1,8 @@
 import pytest
 from datetime import date, timedelta
 from unittest.mock import patch, MagicMock
-from app.db.database import SessionLocal, Base, engine
-from app.db.models import Flight, ScraperLog, Airport
+from db.database import SessionLocal, Base, engine
+from db.models import Flight, ScraperLog, Airport
 from app.scraper.extractor import run_full_extraction_job
 
 def test_full_ingestion_job_submission():

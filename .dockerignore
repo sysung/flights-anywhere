@@ -5,7 +5,7 @@ frontend/dist
 app/__pycache__
 app/tests/__pycache__
 app/scraper/__pycache__
-app/db/__pycache__
+db/__pycache__
 app/core/__pycache__
 .env
 .pytest_cache

@@ -2,8 +2,8 @@ import logging
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from app.db.database import SessionLocal
-from app.db.models import Flight, Airport, ScraperLog
+from db.database import SessionLocal
+from db.models import Flight, Airport, ScraperLog
 from app.scraper.scraper import run_flight_scrape
 from app.scraper.date_utils import generate_date_matrix
 from app.scraper.kafka_producer import FlightKafkaProducer
