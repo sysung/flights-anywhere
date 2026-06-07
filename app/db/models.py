@@ -25,6 +25,7 @@ class Flight(Base):
     flight_number = Column(String(20))
     stops = Column(Integer, default=0)
     duration_minutes = Column(Integer)
+    booking_url = Column(Text)
     delete_indicator = Column(Integer, default=0)
     last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

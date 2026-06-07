@@ -90,10 +90,14 @@ def test_extract_flights_info():
     chunk = [level_1]
     mock_chunks = [chunk]
     
-    flights = extract_flights_info(mock_chunks)
+    flights = extract_flights_info(mock_chunks, origin="SFO", dep_date="2026-06-20", ret_date="2026-06-27")
     assert len(flights) == 2
     assert flights[0]["airline"] == "United Airlines"
     assert flights[0]["price"] == 150.00
     assert flights[0]["duration"] == "1h 30m"
+    assert flights[0]["duration_minutes"] == 90
+    assert "https://www.google.com/travel/flights?q=Flights%20to%20LAX%20from%20SFO%20on%202026-06-20%20returning%202026-06-27" in flights[0]["booking_url"]
     assert flights[1]["airline"] == "Delta"
     assert flights[1]["arrival_airport"] == "JFK"
+    assert flights[1]["duration_minutes"] == 330
+    assert "https://www.google.com/travel/flights?q=Flights%20to%20JFK%20from%20SFO%20on%202026-06-20%20returning%202026-06-27" in flights[1]["booking_url"]

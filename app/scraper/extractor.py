@@ -39,7 +39,7 @@ def run_full_extraction_job(targets=None):
             logger.info(f"Scraping SFO to {dest} (dep: {dep_date}, ret: {ret_date})...")
             try:
                 chunks = run_flight_scrape("SFO", dest, dep_date, ret_date)
-                flights_list = extract_flights_info(chunks)
+                flights_list = extract_flights_info(chunks, origin="SFO", dest=dest, dep_date=dep_date, ret_date=ret_date)
                 
                 logger.info(f"Extracted {len(flights_list)} flights for route SFO -> {dest}")
                 
@@ -47,38 +47,11 @@ def run_full_extraction_job(targets=None):
                     airport_code = f["arrival_airport"]
                     
                     # 1. Dynamic Airport Ingestion
-                    existing_airport = db.query(Airport).filter(Airport.code == airport_code).first()
-                    if not existing_airport:
-                        logger.info(f"Airport {airport_code} does not exist in database. Dynamically seeding.")
-                        new_airport = Airport(
-                            code=airport_code,
-                            name=f"{airport_code} International Airport",
-                            city=airport_code,
-                            country="Unknown",
-                            is_international=True
-                        )
-                        db.add(new_airport)
-                        db.commit()
-                    
-                    # 2. Upsert Flight Listing
-                    existing_flight = db.query(Flight).filter(
-                        Flight.origin == "SFO",
-                        Flight.destination == airport_code,
-                        Flight.departure_date == datetime.strptime(dep_date, "%Y-%m-%d").date(),
-                        Flight.airline == f["airline"]
-                    ).first()
-                    
-                    price_val = Decimal(str(f["price"])) if f["price"] else Decimal("0.0")
-                    
-                    # Compute stops
-                    stops_val = 0
-                    if "1 stop" in f.get("duration", "").lower():
-                        stops_val = 1
-                    elif "2 stop" in f.get("duration", "").lower():
-                        stops_val = 2
-                    
+...
                     if existing_flight:
                         existing_flight.price = price_val
+                        existing_flight.duration_minutes = f.get("duration_minutes", 0)
+                        existing_flight.booking_url = f.get("booking_url")
                         existing_flight.last_seen = run_start
                         existing_flight.delete_indicator = 0
                         updated += 1
@@ -91,6 +64,8 @@ def run_full_extraction_job(targets=None):
                             price=price_val,
                             airline=f["airline"],
                             stops=stops_val,
+                            duration_minutes=f.get("duration_minutes", 0),
+                            booking_url=f.get("booking_url"),
                             last_seen=run_start,
                             delete_indicator=0
                         )
