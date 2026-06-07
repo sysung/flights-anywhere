@@ -14,8 +14,9 @@ class FlightOut(BaseModel):
     stops: int
     booking_url: str
     
-    class Config:
-        from_attributes = True
+    model_config = {
+        "from_attributes": True
+    }
 
 class ScraperLogOut(BaseModel):
     started_at: datetime

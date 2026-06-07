@@ -6,23 +6,40 @@ from typing import List, Optional
 import os
 import logging
 
-from app.database import get_db, Base, engine
-from app.models import Flight, ScraperLog
-from app.config import settings
-from app.schemas import FlightOut, ScraperLogOut
-from app.extractor import run_full_extraction_job
+from app.db.database import get_db, Base, engine
+from app.db.models import Flight, ScraperLog
+from app.core.config import settings
+from app.db.schemas import FlightOut, ScraperLogOut
+from app.scraper.extractor import run_full_extraction_job
 
 logger = logging.getLogger(__name__)
 
-# Initialize database tables
-Base.metadata.create_all(bind=engine)
+# Initialize database tables with error handling
+try:
+    logger.info("Initializing database tables...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables initialized successfully.")
+except Exception as e:
+    logger.error(f"CRITICAL: Failed to initialize database tables: {e}")
+    # We continue to let the app start so we can at least see error logs in the browser/API
+    # but most routes will fail with 500 until DB is fixed.
 
 app = FastAPI(title="SFO Anywhere Flights Search API")
 
-# Enable CORS for local React development
+# Configure CORS
+# In production, you should ideally set this to your specific frontend domain.
+# For this PoC, we allow local development origins and the Railway domain if provided.
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8000",
+]
+if os.getenv("RAILWAY_PUBLIC_DOMAIN"):
+    allowed_origins.append(f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN')}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if os.getenv("ENVIRONMENT") == "production" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,6 +103,16 @@ def get_scraper_status(db: Session = Depends(get_db)):
     """
     return db.query(ScraperLog).order_by(ScraperLog.started_at.desc()).limit(10).all()
 
+@app.post("/api/scraper/run")
+def trigger_scraper_run():
+    """
+    Manually triggers the full extraction job in a background thread.
+    """
+    import threading
+    logger.info("Manual scraper run triggered via API.")
+    threading.Thread(target=run_full_extraction_job, daemon=True).start()
+    return {"message": "Scraper job started in background."}
+
 # Chatbot placeholder endpoint (Task 5 will define the agent, but main router is set up here)
 from pydantic import BaseModel
 class ChatRequest(BaseModel):
@@ -97,7 +124,7 @@ def post_chat(req: ChatRequest, db: Session = Depends(get_db)):
     Processes chat requests using the Gemini AI agent.
     """
     try:
-        from app.agent import run_chatbot_agent
+        from app.core.agent import run_chatbot_agent
     except ImportError:
         return {
             "response_text": "Assistant offline. Please wait until Task 5 is completed.",

@@ -1,18 +1,24 @@
 import logging
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from app.database import SessionLocal
-from app.models import Flight, Airport, ScraperLog
-from app.scraper import run_flight_scrape
-from app.extractor_utils import extract_flights_info
+from app.db.database import SessionLocal
+from app.db.models import Flight, Airport, ScraperLog
+from app.scraper.scraper import run_flight_scrape
+from app.scraper.extractor_utils import extract_flights_info
 
 logger = logging.getLogger(__name__)
 
-def run_full_extraction_job():
+# Destinations we wish to scrape directly out of SFO
+DEFAULT_TARGETS = ["LAX", "JFK", "HNL", "LHR", "CDG", "NRT", "ICN"]
+
+def run_full_extraction_job(targets=None):
     """
     Ingestion job. Runs Playwright scraping for top SFO destination targets,
     dynamically seeds missing airport records, updates flights, and soft-deletes obsolete ones.
     """
+    if targets is None:
+        targets = DEFAULT_TARGETS
+
     logger.info("Starting SFO flight ingestion job...")
     db = SessionLocal()
     log = ScraperLog(status="RUNNING")
@@ -24,9 +30,6 @@ def run_full_extraction_job():
     # We will target a fixed date window for our PoC (e.g. departing in 14 days, returning in 21 days)
     dep_date = (date.today() + timedelta(days=14)).strftime("%Y-%m-%d")
     ret_date = (date.today() + timedelta(days=21)).strftime("%Y-%m-%d")
-    
-    # Destinations we wish to scrape directly out of SFO
-    targets = ["LAX", "JFK", "HNL", "LHR", "CDG", "NRT", "ICN"]
     
     inserted = 0
     updated = 0

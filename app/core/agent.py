@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import google.generativeai as genai
-from app.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ User message: "{user_message}"
 """
 
     try:
-        model = genai.GenerativeModel('gemini-3.1-flash-lite')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         
         # Clean up response text in case it is wrapped in markdown JSON blocks

@@ -17,16 +17,16 @@ We use a clean, modern color scheme designed to feel familiar to Google Flights 
 
 | Color Token | Hex Code / Value | Role | Design Rationale |
 | :--- | :--- | :--- | :--- |
-| **Primary Blue** | `#1a73e8` | Brand, Main Actions, Headers | Direct nod to Google Flights' visual identity; establishes instant trust and navigation familiarity. |
-| **Success Green** | `#137333` | Prices, Best Deals, Success badges | Soft, accessible dark green that signals a "good deal" and indicates positive pricing states. |
-| **Bg Light** | `#f8fafc` | Global Page Background | Slate 50 tint that reduces harsh glare compared to pure `#ffffff` white, easing long search sessions. |
-| **Surface White** | `#ffffff` | Card and Container surfaces | Pure white elements placed on the slate background to create high-contrast visual layers. |
-| **Text Primary** | `#0f172a` | Headers, Titles, Active Labels | Slate 900; provides sharp contrast and maximum readability. |
-| **Text Secondary** | `#475569` | Subtitles, Layovers, Durations | Slate 600; dims less critical information to establish typographic hierarchy. |
-| **Border Slate** | `#e2e8f0` | Dividers, Grid Borders | Slate 200; thin separators that structure grid items without adding visual noise. |
-| **Filters Background**| `#f1f5f9` (Cool Slate) | Filters container surface | Cool slate background to group and distinguish filter inputs from the table below. |
-| **Chatbot Feed Bg** | `#f5f3ff` (Lavender Tint) | Chat feed messages area bg | Premium soft violet/lavender tint to set the chatbot assistant visually apart. |
-| **Chatbot Header** | `linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)` | Chat Title block bg | Dynamic purple gradient giving a premium, AI-native touch to the flight assistant. |
+| **Primary Blue** | ` #1a73e8` | Brand, Main Actions, Headers | Direct nod to Google Flights' visual identity; establishes instant trust and navigation familiarity. |
+| **Success Green** | ` #137333` | Prices, Best Deals, Success badges | Soft, accessible dark green that signals a "good deal" and indicates positive pricing states. |
+| **Bg Light** | ` #f8fafc` | Global Page Background | Slate 50 tint that reduces harsh glare compared to pure ` #ffffff` white, easing long search sessions. |
+| **Surface White** | ` #ffffff` | Card and Container surfaces | Pure white elements placed on the slate background to create high-contrast visual layers. |
+| **Text Primary** | ` #0f172a` | Headers, Titles, Active Labels | Slate 900; provides sharp contrast and maximum readability. |
+| **Text Secondary** |  ` #475569` | Subtitles, Layovers, Durations | Slate 600; dims less critical information to establish typographic hierarchy. |
+| **Border Slate** | ` #e2e8f0` | Dividers, Grid Borders | Slate 200; thin separators that structure grid items without adding visual noise. |
+| **Filters Background**| ` #f1f5f9` (Cool Slate) | Filters container surface | Cool slate background to group and distinguish filter inputs from the table below. |
+| **Chatbot Feed Bg** | ` #f0f7ff` (Light Blue Tint) | Chat feed messages area bg | Premium soft light blue tint to set the chatbot assistant visually apart. |
+| **Chatbot Header** | `linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%)` | Chat Title block bg | Dynamic blue gradient giving a premium, AI-native touch to the flight assistant. |
 
 ---
 
@@ -43,7 +43,7 @@ We implement a responsive, fluid split-pane layout to balance conversational AI 
 │   ┌───────────────────────────────┐   │   ┌───────────────────────┐   │
 │   │ Filters Row (Slate Background)│   │   │ AI Assistant          │   │
 │   │ [Slider][Dest][Airlines] [X]  │   │   │ - Title Gradient      │   │
-│   └───────────────────────────────┘   │   │ - Lavender Message    │   │
+│   └───────────────────────────────┘   │   │ - Light Blue Message  │   │
 │   ┌───────────────────────────────┐   │   │   History feed        │   │
 │   │ Flights Listings Table        │   │   │   (Scrollable)        │   │
 │   │ (Crisp White Background)      │   │   │ - Chat input field    │   │
@@ -69,8 +69,8 @@ Displays flight listings matching active search queries.
 A docking side panel locked to the viewport height.
 *   **MUI Component:** `Paper` card with a fixed height (`calc(100vh - 80px)`), an internally scrollable messages feed (`overflowY: 'auto'`), and a bottom input container (`TextField` with an `IconButton` submit).
 *   **Message Bubble (`Box`):**
-    *   *User Bubbles:* Indigo background (`#4f46e5`), white text, aligned to the right.
-    *   *Agent Bubbles:* Crisp White background (`#ffffff`), dark slate text (`#0f172a`), thin purple border (`1px solid #e9d5ff`), aligned to the left.
+    *   *User Bubbles:* Primary Blue background (`#1a73e8`), white text, aligned to the right.
+    *   *Agent Bubbles:* Crisp White background (`#ffffff`), dark slate text (`#0f172a`), thin light blue border (`1px solid #d1e3fa`), aligned to the left.
 *   **Dynamic Synchronization Script:**
     *   When the user submits a message, the chatbot sends the text to `/api/chat`.
     *   The API returns the agent text along with SQL filter states.
