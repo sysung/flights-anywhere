@@ -7,9 +7,8 @@ import {
 } from '@mui/material';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
-const Header = ({ scraperStatus, loadingFlights, onRefresh, onRunScraper }) => {
+const Header = ({ scraperStatus, onRefresh }) => {
   const getStatusColor = (status) => {
     if (!status) return 'bg-slate-400';
     switch (status.toUpperCase()) {
@@ -19,6 +18,8 @@ const Header = ({ scraperStatus, loadingFlights, onRefresh, onRunScraper }) => {
       default: return 'bg-slate-400';
     }
   };
+
+  const isRunning = scraperStatus?.status === 'RUNNING';
 
   return (
     <header className="sticky top-0 z-[1100] px-6 py-4 border-b border-border-slate bg-white/85 backdrop-blur-md shadow-sm">
@@ -40,7 +41,7 @@ const Header = ({ scraperStatus, loadingFlights, onRefresh, onRunScraper }) => {
           {scraperStatus && (
             <Tooltip title={`Records Inserted: ${scraperStatus.records_inserted} | Updated: ${scraperStatus.records_updated}`}>
               <div className="px-4 py-1.5 flex items-center gap-3 border border-border-slate bg-bg-light rounded-full shadow-sm">
-                <div className={`w-2 h-2 rounded-full ${getStatusColor(scraperStatus.status)}`} />
+                <div className={`w-2 h-2 rounded-full ${getStatusColor(scraperStatus.status)} ${isRunning ? 'animate-pulse' : ''}`} />
                 <div>
                   <span className="text-[10px] font-bold block uppercase tracking-wider text-text-primary leading-none">
                     Scraper: {scraperStatus.status}
@@ -54,25 +55,13 @@ const Header = ({ scraperStatus, loadingFlights, onRefresh, onRunScraper }) => {
           )}
           
           <div className="flex items-center gap-1">
-            <Tooltip title="Run Scraper Now">
-              <IconButton 
-                onClick={onRunScraper} 
-                color="secondary" 
-                size="small" 
-                disabled={scraperStatus?.status === 'RUNNING'}
-                className="hover:bg-purple-50 transition-colors"
-              >
-                <PlayArrowIcon />
-              </IconButton>
-            </Tooltip>
-
-            <Tooltip title="Refresh Data">
+            <Tooltip title={isRunning ? "Scraper already running" : "Trigger New Scrape"}>
               <IconButton 
                 onClick={onRefresh} 
                 color="primary" 
                 size="small" 
-                disabled={loadingFlights}
-                className="hover:bg-blue-50 transition-colors"
+                disabled={isRunning}
+                className={`transition-all ${isRunning ? 'opacity-50' : 'hover:bg-blue-50 hover:rotate-180'}`}
               >
                 <RefreshIcon />
               </IconButton>

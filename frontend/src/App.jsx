@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Box, 
-  Grid, 
   useMediaQuery, 
   useTheme, 
   Fab, 
-  Drawer 
+  Drawer,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 
@@ -24,14 +24,21 @@ function App() {
   const [scraperStatus, setScraperStatus] = useState(null);
   const [loadingFlights, setLoadingFlights] = useState(false);
 
+  // Notification State
+  const [notification, setNotification] = useState({ open: false, message: '', severity: 'info' });
+
   // Filter States (synchronized between Chat and Quick Filters)
   const [maxPrice, setMaxPrice] = useState(2000);
+  const [maxPossiblePrice, setMaxPossiblePrice] = useState(2000); // For dynamic slider range
   const [selectedAirlines, setSelectedAirlines] = useState([]);
   const [destinationFilter, setDestinationFilter] = useState('');
   
   // Available list options for filters
   const [availableAirlines, setAvailableAirlines] = useState([]);
   const [availableDestinations, setAvailableDestinations] = useState([]);
+
+  // Track initial load to prevent resets
+  const isInitialLoad = React.useRef(true);
 
   // Chatbot States
   const [chatMessages, setChatMessages] = useState([
@@ -60,11 +67,19 @@ function App() {
         const destinations = [...new Set(data.map(f => f.destination.toUpperCase()))].sort();
         setAvailableDestinations(destinations);
         
-        // Set maximum price slider range dynamically based on flights if possible
+        // Handle Price Range
         if (data.length > 0) {
           const prices = data.map(f => parseFloat(f.price));
-          const maxVal = Math.max(...prices);
-          setMaxPrice(Math.ceil(maxVal / 100) * 100);
+          const actualMax = Math.max(...prices);
+          const roundedMax = Math.ceil(actualMax / 100) * 100;
+          
+          setMaxPossiblePrice(roundedMax);
+
+          // Only auto-adjust the user's maxPrice filter on the very first data fetch
+          if (isInitialLoad.current) {
+            setMaxPrice(roundedMax);
+            isInitialLoad.current = false;
+          }
         }
       }
     } catch (error) {
@@ -93,6 +108,20 @@ function App() {
     fetchFlights();
     fetchScraperStatus();
   }, []);
+
+  useEffect(() => {
+    // Poll for scraper status if it's running
+    let interval;
+    if (scraperStatus?.status === 'RUNNING') {
+      interval = setInterval(() => {
+        fetchScraperStatus();
+        fetchFlights();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [scraperStatus?.status]);
 
   // Filter local flights
   const filteredFlights = useMemo(() => {
@@ -169,23 +198,32 @@ function App() {
 
   // Reset all filters
   const handleResetFilters = () => {
-    setMaxPrice(2000);
+    setMaxPrice(maxPossiblePrice);
     setSelectedAirlines([]);
     setDestinationFilter('');
   };
 
   // Manual Scraper Trigger
   const handleRunScraper = async () => {
+    // Optimistic UI update
+    setScraperStatus(prev => ({ ...prev, status: 'RUNNING' }));
+    setNotification({ open: true, message: 'Scraper job started in the background!', severity: 'success' });
+
     try {
       const response = await fetch('/api/scraper/run', { method: 'POST' });
-      if (response.ok) {
-        // Refresh status immediately to show "RUNNING"
-        fetchScraperStatus();
-        alert("Scraper job started in the background!");
+      if (!response.ok) {
+        setNotification({ open: true, message: 'Failed to trigger scraper.', severity: 'error' });
+        fetchScraperStatus(); // Revert to actual status
       }
     } catch (error) {
       console.error("Error triggering scraper:", error);
+      setNotification({ open: true, message: 'Connection error while triggering scraper.', severity: 'error' });
+      fetchScraperStatus(); // Revert
     }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification(prev => ({ ...prev, open: false }));
   };
 
   const chatbotProps = {
@@ -205,9 +243,7 @@ function App() {
       
       <Header 
         scraperStatus={scraperStatus} 
-        loadingFlights={loadingFlights} 
-        onRefresh={() => { fetchFlights(); fetchScraperStatus(); }} 
-        onRunScraper={handleRunScraper}
+        onRefresh={handleRunScraper}
       />
 
       <main className="flex-grow flex overflow-hidden">
@@ -220,6 +256,7 @@ function App() {
             <QuickFilters 
               maxPrice={maxPrice}
               setMaxPrice={setMaxPrice}
+              maxPossiblePrice={maxPossiblePrice}
               destinationFilter={destinationFilter}
               setDestinationFilter={setDestinationFilter}
               selectedAirlines={selectedAirlines}
@@ -271,6 +308,18 @@ function App() {
           onClose={() => setIsChatOpen(false)} 
         />
       </Drawer>
+
+      {/* Subtle Bottom-Right Notification */}
+      <Snackbar 
+        open={notification.open} 
+        autoHideDuration={4000} 
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseNotification} severity={notification.severity} variant="filled" sx={{ width: '100%', borderRadius: '12px' }}>
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

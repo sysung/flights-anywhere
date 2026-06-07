@@ -13,6 +13,7 @@ import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 const QuickFilters = ({
   maxPrice,
   setMaxPrice,
+  maxPossiblePrice,
   destinationFilter,
   setDestinationFilter,
   selectedAirlines,
@@ -39,7 +40,7 @@ const QuickFilters = ({
             value={maxPrice}
             onChange={(e, val) => setMaxPrice(val)}
             min={100}
-            max={2000}
+            max={maxPossiblePrice}
             step={50}
             valueLabelDisplay="auto"
             size="small"
@@ -114,7 +115,7 @@ const QuickFilters = ({
             color="error"
             startIcon={<FilterAltOffIcon />}
             onClick={onReset}
-            disabled={!(maxPrice < 2000 || selectedAirlines.length > 0 || destinationFilter)}
+            disabled={!(maxPrice < maxPossiblePrice || selectedAirlines.length > 0 || destinationFilter)}
             className="h-10 px-6 rounded-lg"
           >
             Clear Filters
