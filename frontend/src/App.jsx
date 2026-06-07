@@ -174,6 +174,20 @@ function App() {
     setDestinationFilter('');
   };
 
+  // Manual Scraper Trigger
+  const handleRunScraper = async () => {
+    try {
+      const response = await fetch('/api/scraper/run', { method: 'POST' });
+      if (response.ok) {
+        // Refresh status immediately to show "RUNNING"
+        fetchScraperStatus();
+        alert("Scraper job started in the background!");
+      }
+    } catch (error) {
+      console.error("Error triggering scraper:", error);
+    }
+  };
+
   const chatbotProps = {
     messages: chatMessages,
     onSendMessage: handleSendChat,
@@ -193,6 +207,7 @@ function App() {
         scraperStatus={scraperStatus} 
         loadingFlights={loadingFlights} 
         onRefresh={() => { fetchFlights(); fetchScraperStatus(); }} 
+        onRunScraper={handleRunScraper}
       />
 
       <main className="flex-grow flex overflow-hidden">

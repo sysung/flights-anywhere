@@ -7,8 +7,9 @@ import {
 } from '@mui/material';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
-const Header = ({ scraperStatus, loadingFlights, onRefresh }) => {
+const Header = ({ scraperStatus, loadingFlights, onRefresh, onRunScraper }) => {
   const getStatusColor = (status) => {
     if (!status) return 'bg-slate-400';
     switch (status.toUpperCase()) {
@@ -34,7 +35,7 @@ const Header = ({ scraperStatus, loadingFlights, onRefresh }) => {
           </div>
         </div>
         
-        <div className="flex items-center gap-6 self-end sm:self-auto">
+        <div className="flex items-center gap-4 self-end sm:self-auto">
           {/* Scraper Status Badge */}
           {scraperStatus && (
             <Tooltip title={`Records Inserted: ${scraperStatus.records_inserted} | Updated: ${scraperStatus.records_updated}`}>
@@ -52,15 +53,31 @@ const Header = ({ scraperStatus, loadingFlights, onRefresh }) => {
             </Tooltip>
           )}
           
-          <IconButton 
-            onClick={onRefresh} 
-            color="primary" 
-            size="small" 
-            disabled={loadingFlights}
-            className="hover:bg-blue-50 transition-colors"
-          >
-            <RefreshIcon />
-          </IconButton>
+          <div className="flex items-center gap-1">
+            <Tooltip title="Run Scraper Now">
+              <IconButton 
+                onClick={onRunScraper} 
+                color="secondary" 
+                size="small" 
+                disabled={scraperStatus?.status === 'RUNNING'}
+                className="hover:bg-purple-50 transition-colors"
+              >
+                <PlayArrowIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Refresh Data">
+              <IconButton 
+                onClick={onRefresh} 
+                color="primary" 
+                size="small" 
+                disabled={loadingFlights}
+                className="hover:bg-blue-50 transition-colors"
+              >
+                <RefreshIcon />
+              </IconButton>
+            </Tooltip>
+          </div>
         </div>
       </div>
     </header>

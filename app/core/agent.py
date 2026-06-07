@@ -46,7 +46,7 @@ User message: "{user_message}"
 """
 
     try:
-        model = genai.GenerativeModel('gemini-3.1-flash-lite')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
         
         # Clean up response text in case it is wrapped in markdown JSON blocks

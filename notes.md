@@ -65,4 +65,16 @@ graph TD
     end
     
     Scraper -->|Scrapes| GF((Google Flights))
-```
+    ```
+
+    ## 🏗️ Future Database Schema Management (Source of Truth)
+    To ensure the local development environment and Railway production instance stay in sync as the schema evolves:
+
+    1. **Alembic (Industry Standard)**:
+    - **Strategy**: Use Alembic to generate version-controlled migration scripts directly from SQLAlchemy models.
+    - **Benefit**: Keeps database structure in Git, allows rollbacks, and ensures every environment (local/prod) is identical.
+    - **Command**: `alembic revision --autogenerate -m "description"`
+
+    2. **Atlas (IaaS approach)**:
+    - **Strategy**: Leverage [Atlas](https://atlasgo.io/) for declarative schema management (Terraform for DBs).
+    - **Benefit**: Automatic diffing between environments and visual schema visualizations.

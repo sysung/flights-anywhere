@@ -46,37 +46,42 @@ docker-compose run --rm -e PYTHONPATH=/workspace app pytest app/tests/
 
 ---
 
-## ☁️ Deployment Guide (Railway)
+## 🚀 Production Iteration Workflow (Railway)
 
-Follow these steps to deploy this application to production using [Railway](https://railway.app):
+Since the infrastructure and environment variables are already configured, use this iterative cycle to deploy updates:
 
-### 1. Provision Services
-1.  Log in to Railway and create a **New Project**.
-2.  Select **Provision PostgreSQL**.
-3.  Select **Deploy from GitHub repo** and connect this repository.
+### 1. Develop & Test Locally
+Verify your changes locally using Docker Compose:
+```bash
+docker-compose up --build
+```
 
-### 2. Configure Environment Variables
-In your Railway **App** service settings, add the following variables:
-- `GOOGLE_CLOUD_API_KEY`: Your Gemini API key.
-- `DATABASE_URL`: Set this to `${{Postgres.DATABASE_URL}}` (This ensures you use the **private** internal network).
-- `TIMEZONE`: `America/Los_Angeles` (or your preferred PST timezone).
-
-### 3. Build & Launch
-Railway normally uses **Nixpacks** by default. To ensure it uses the `Dockerfile` and deploys automatically:
-
-1.  **Set Builder**: Go to **Settings > Build > Builder** in your App service and select **Dockerfile**.
-2.  **Enable Automatic Deploys**: Ensure **Settings > General > Automatic Deployments** is turned ON.
-3.  **Deploy via Push**: Once configured, every `git push` to your main branch will trigger a fresh build and deploy.
-4.  **Deploy via CLI (Optional)**: If you need to deploy local changes without pushing to GitHub, you can still use the CLI:
-    ```bash
-    railway up
-    ```
-
-*Note: The background scraper will automatically trigger its first run upon successful deployment.*
+### 2. Deploy to Production
+Push your local changes directly to the production service using the Railway CLI:
+```bash
+railway up --service <your-app-service-name>
+```
+*This command packages the current directory, triggers the multi-stage Docker build on Railway, and restarts the service.*
 
 ---
 
-## 🏗️ System Architecture
+## 👥 Collaborator Guide (Running Locally)
+
+If you are a reviewer or collaborator and do not have access to the production Railway project, follow these steps to run the full stack locally:
+
+1.  **Clone & Environment**:
+    ```bash
+    git clone <repo-url>
+    cp .env.example .env
+    ```
+2.  **Launch Stack**:
+    Ensure Docker is running, then execute:
+    ```bash
+    docker-compose up --build
+    ```
+    *This will provision a local PostgreSQL instance and the FastAPI/React app. It does **not** require any Railway permissions or cloud resources.*
+
+---
 
 - **Frontend (React + MUI)**: Responsive split-pane dashboard. Displays the flight data grid, active filters chips, and the Gemini-powered AI chatbot assistant (now in a sleek blue theme).
 - **Backend (FastAPI)**: Modularized structure for scalability:
