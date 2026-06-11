@@ -93,6 +93,12 @@ curl -X POST http://127.0.0.1:8000/api/flights/search \
   -d '{"origin":"SFO","destination":"LAX","outbound_date":"2026-08-01","return_date":"2026-08-08"}'
 ```
 
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/healthz
+```
+
 ## CLI Debugging
 
 The original CLI remains useful for inspecting raw responses. If you want to use
@@ -125,10 +131,15 @@ Current coverage includes:
 
 - entity resolution
 - `f.req` encode/decode
+- stable seed request shape
+- session TTL, corrupt cache, and malformed cache refresh
+- request-builder mutation for Explore and Shopping
 - Explore result parsing
 - exact flight-number parsing
+- parser dedupe and unknown-shape handling
 - mocked Explore and Shopping service flows
-- FastAPI route schema test, skipped if FastAPI is not installed
+- retry after Google HTTP failures
+- API error mapping and health endpoint
 
 ## Project Layout
 

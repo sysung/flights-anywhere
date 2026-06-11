@@ -1,87 +1,142 @@
-# Spec: SFO Flight Anywhere Search MUI Frontend Design
+# Design
 
-This document details the frontend visual design, styling tokens, component hierarchy, and the user experience rationale for the SFO Flight Anywhere Search mini-app.
+## API Shape
 
----
+The public API is intentionally small:
 
-## 🎨 Design System & Visual Identity
-
-### 1. Typography
-*   **Primary Font:** `Inter` (Sans-serif)
-    *   *Reasoning:* Inter is a modern, highly legible typeface engineered specifically for user interfaces. Its neutral tone and open letterforms prevent visual fatigue in dense data displays (like our flights grid).
-*   **Secondary Font:** `Roboto`
-    *   *Reasoning:* Leveraged for numbers, dates, and currency values. Roboto's semi-monospaced number characters ensure columns align perfectly in pricing tables without text jittering.
-
-### 2. Color System
-We use a clean, modern color scheme designed to feel familiar to Google Flights users while maintaining a premium, high-trust appearance, with distinct color separations for key sections.
-
-| Color Token | Hex Code / Value | Role | Design Rationale |
-| :--- | :--- | :--- | :--- |
-| **Primary Blue** | ` #1a73e8` | Brand, Main Actions, Headers | Direct nod to Google Flights' visual identity; establishes instant trust and navigation familiarity. |
-| **Success Green** | ` #137333` | Prices, Best Deals, Success badges | Soft, accessible dark green that signals a "good deal" and indicates positive pricing states. |
-| **Bg Light** | ` #f8fafc` | Global Page Background | Slate 50 tint that reduces harsh glare compared to pure ` #ffffff` white, easing long search sessions. |
-| **Surface White** | ` #ffffff` | Card and Container surfaces | Pure white elements placed on the slate background to create high-contrast visual layers. |
-| **Text Primary** | ` #0f172a` | Headers, Titles, Active Labels | Slate 900; provides sharp contrast and maximum readability. |
-| **Text Secondary** |  ` #475569` | Subtitles, Layovers, Durations | Slate 600; dims less critical information to establish typographic hierarchy. |
-| **Border Slate** | ` #e2e8f0` | Dividers, Grid Borders | Slate 200; thin separators that structure grid items without adding visual noise. |
-| **Filters Background**| ` #f1f5f9` (Cool Slate) | Filters container surface | Cool slate background to group and distinguish filter inputs from the table below. |
-| **Chatbot Feed Bg** | ` #f0f7ff` (Light Blue Tint) | Chat feed messages area bg | Premium soft light blue tint to set the chatbot assistant visually apart. |
-| **Chatbot Header** | `linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%)` | Chat Title block bg | Dynamic blue gradient giving a premium, AI-native touch to the flight assistant. |
-
----
-
-## 🖥️ Layout & Component Hierarchy
-
-We implement a responsive, fluid split-pane layout to balance conversational AI controls with structured database results.
-
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│                    App Bar (Title & Scraper Status)                   │
-├───────────────────────────────────────┬───────────────────────────────┤
-│                                       │                               │
-│        Left Panel (70% Width)         │     Right Panel (30% Width)   │
-│   ┌───────────────────────────────┐   │   ┌───────────────────────┐   │
-│   │ Filters Row (Slate Background)│   │   │ AI Assistant          │   │
-│   │ [Slider][Dest][Airlines] [X]  │   │   │ - Title Gradient      │   │
-│   └───────────────────────────────┘   │   │ - Light Blue Message  │   │
-│   ┌───────────────────────────────┐   │   │   History feed        │   │
-│   │ Flights Listings Table        │   │   │   (Scrollable)        │   │
-│   │ (Crisp White Background)      │   │   │ - Chat input field    │   │
-│   └───────────────────────────────┘   │   └───────────────────────┘   │
-│                                       │                               │
-└───────────────────────────────────────┴───────────────────────────────┘
+```text
+GET  /healthz
+POST /api/flights/search
 ```
 
-### 1. The Flights Grid (Left Pane - 70% width)
-Displays flight listings matching active search queries.
-*   **MUI Component:** `Box` container spanning `70%` width of the screen.
-*   **Inline Filters Bar (`Paper`):** 
-    *   Styled with Cool Slate (`#f1f5f9`) background and slate accent line (`borderLeft: '4px solid #64748b'`).
-    *   **Max Price Slider:** Shorter width slider for filtering flights by maximum price.
-    *   **Destination Code Autocomplete:** Single-select search filter populated with active routes. Text-box with pre-select options, restricted to 3 uppercase letters.
-    *   **Airlines Autocomplete:** Multi-select input displaying active selections as compact Chips inside the input area.
-    *   **Clear Filters Button:** Outlined red button (`variant="outlined"` and `color="error"`) positioned on the far right of the row.
-*   **Flights Listing Table (`Paper`):**
-    *   Styled with Crisp White (`#ffffff`) background and primary blue accent line (`borderLeft: '4px solid #1a73e8'`).
-    *   Displays routes and schedules using MUI `DataGrid`.
+`POST /api/flights/search` accepts:
 
-### 2. The AI Chatbot Panel (Right Pane - 30% width)
-A docking side panel locked to the viewport height.
-*   **MUI Component:** `Paper` card with a fixed height (`calc(100vh - 80px)`), an internally scrollable messages feed (`overflowY: 'auto'`), and a bottom input container (`TextField` with an `IconButton` submit).
-*   **Message Bubble (`Box`):**
-    *   *User Bubbles:* Primary Blue background (`#1a73e8`), white text, aligned to the right.
-    *   *Agent Bubbles:* Crisp White background (`#ffffff`), dark slate text (`#0f172a`), thin light blue border (`1px solid #d1e3fa`), aligned to the left.
-*   **Dynamic Synchronization Script:**
-    *   When the user submits a message, the chatbot sends the text to `/api/chat`.
-    *   The API returns the agent text along with SQL filter states.
-    *   The frontend updates the filter states (Slider, Destination, Airlines), filtering the listings table in real-time.
+```json
+{
+  "origin": "SFO",
+  "destination": "LAX",
+  "outbound_date": "2026-08-01",
+  "return_date": "2026-08-08",
+  "nonstop": false,
+  "include_details": true,
+  "details_limit": 10
+}
+```
 
----
+`destination` is optional. When omitted, the service searches Google Flights
+Explore anywhere results. When supplied, it uses the Shopping workflow for an
+explicit route.
 
-## 🧱 Key MUI Components List
+## Response Envelope
 
-1.  `CssBaseline`: Standardizes box-sizing, margins, and font rendering across different browsers.
-2.  `DataGrid`: Out-of-the-box support for pagination, sorting by price/duration, and robust column rendering.
-3.  `Autocomplete`: Used for Destination search (single-select with dropdown list) and Airlines selection (multi-select with compact dismissible Chips).
-4.  `Button`: Used with `variant="outlined"` and `color="error"` for the red outline Clear Filters button.
-5.  `Chip`: Used to display active AI-applied filters (e.g., `Max Price: $600`) and multiselect choices. Dismissing a chip automatically resets the filter and updates the grid.
+Both branches return the same top-level structure:
+
+```json
+{
+  "mode": "explore",
+  "selection_stage": "results",
+  "query": {},
+  "results": [],
+  "workflow_state": {}
+}
+```
+
+Each result uses one normalized model with optional fields:
+
+```json
+{
+  "id": "...",
+  "source": "explore",
+  "selection_stage": "destination",
+  "origin": "SFO",
+  "dest": "LAX",
+  "outbound_date": "2026-08-01",
+  "return_date": "2026-08-08",
+  "price": 106,
+  "currency": "USD",
+  "airline_code": "F9",
+  "airline": "Frontier",
+  "stops": 0,
+  "duration_minutes": 96,
+  "flight_num": "F92858",
+  "flight_nums": ["F92858"],
+  "route_token": "...",
+  "option_token": "...",
+  "outbound_options": [],
+  "return_options": [],
+  "booking_options": [],
+  "workflow_state": {}
+}
+```
+
+## Module Layout
+
+```text
+api/
+  main.py                         # FastAPI routes
+  google_flights/
+    builders.py                   # f.req builders
+    codec.py                      # f.req and RPC response decoding
+    constants.py                  # RPC names, paths, defaults
+    entities.py                   # IATA -> Google entity resolver
+    models.py                     # Pydantic schemas
+    parsers.py                    # response parsers
+    service.py                    # workflow orchestration
+    session.py                    # Playwright session capture/cache/refresh
+    transport.py                  # HTTP RPC transport
+```
+
+## Session Design
+
+The API owns its Google session state:
+
+```text
+api/.session/google_flights_session.json
+```
+
+The file is ignored by git. It contains cookies and request metadata, so it
+should be treated like a short-lived secret.
+
+Session behavior:
+
+- load from memory if present and fresh
+- load from file if present, fresh, and structurally valid
+- refresh with Playwright if missing, stale, malformed, or after a Google RPC
+  failure
+- refresh every hour by default
+
+Important detail: the API does **not** persist Google's captured `f.req`
+verbatim. It keeps fresh session metadata but writes a stable seed `f.req` so the
+builders always receive the mutable round-trip leg shape they expect.
+
+## Logging
+
+The service emits readable operational logs:
+
+- `api.search.request`
+- `api.search.response`
+- `google_flights.session.cache_hit`
+- `google_flights.session.cache_invalid`
+- `google_flights.session.refresh_start`
+- `google_flights.session.refresh_done`
+- `google_flights.rpc.start`
+- `google_flights.rpc.done`
+- `google_flights.search.start`
+- `google_flights.search.parsed`
+- `google_flights.search.retry_after_failure`
+- `google_flights.details.parsed`
+
+Use:
+
+```bash
+LOG_LEVEL=INFO uvicorn api.main:app --reload
+```
+
+## Error Handling
+
+- bad user input maps to HTTP 400
+- session/browser/Google RPC availability failures map to HTTP 503
+- unexpected failures map to HTTP 500 with stack traces in server logs
+
+The service retries once with a fresh session after session-shape failures and
+Google HTTP failures.

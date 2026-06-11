@@ -1,35 +1,86 @@
-# Walkthrough: SFO Anywhere Flights
+# Walkthrough
 
-This guide walks you through the core features and the underlying technology of the SFO Anywhere Flights search engine.
+## 1. Start The Service
 
-## 1. The Dashboard
-When you first open the application at `http://localhost:8000`, you are presented with a modern, split-pane dashboard:
-- **Left Panel**: A structured data grid showing the latest flights scraped from Google Flights.
-- **Right Panel**: A Gemini-powered AI assistant ready to help you discover routes.
+Local:
 
-## 2. Real-Time Scraper Status
-In the top right of the header, you can see the **Scraper Status Badge**.
-- It shows whether the background ingestion job is `RUNNING`, `SUCCESS`, or `FAILED`.
-- Hovering over it reveals the number of records inserted and updated during the last run.
-- The scraper runs automatically on startup and then every 12-24 hours.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+python3 -m playwright install chromium
+uvicorn api.main:app --reload
+```
 
-## 3. Intelligent AI Search
-Instead of manually tweaking filters, try talking to the assistant:
-1. Type: *"Find me flights to London under $800"* in the chat box.
-2. The agent will respond conversationally.
-3. **The Magic**: Watch the **Quick Filters** and the **Flights Grid** update automatically. The agent extracted "LHR" (London Heathrow) and "$800" as structured criteria and synced them to the UI.
+Docker:
 
-## 4. Quick Filters
-If you prefer manual control, use the filters above the table:
-- **Max Price Slider**: Instantly narrow down results by price.
-- **Destination Autocomplete**: Search for specific 3-letter airport codes.
-- **Airlines Multi-Select**: Filter by one or more specific carriers.
-- **Sync**: Any changes you make here are also reflected in the AI assistant's "Active Filters" chip bar.
+```bash
+docker compose up --build
+```
 
-## 5. Booking Links
-Every flight in the list includes a **"Book Flight"** button. Clicking this will open a pre-populated Google Flights search for that exact route and date, allowing you to complete your purchase directly with the airline.
+If old compose services are reported as orphans:
 
-## 6. Under the Hood
-- **Binary Stream Parsing**: The backend doesn't just "scrape" HTML; it intercepts Google's internal binary Wiz stream and decodes the Protobuf payloads.
-- **Modular Backend**: Built with FastAPI and PostgreSQL, organized into clean, scalable submodules.
-- **Dockerized**: The entire environment (DB, App, Scraper) spins up with a single `docker-compose up --build` command.
+```bash
+docker compose up --build --remove-orphans
+```
+
+If an old session volume should be cleared:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+## 2. Check Health
+
+```bash
+curl http://127.0.0.1:8000/healthz
+```
+
+Expected:
+
+```json
+{"status":"ok"}
+```
+
+## 3. Search Anywhere
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/flights/search \
+  -H 'content-type: application/json' \
+  -d '{"origin":"SFO","outbound_date":"2026-08-01","return_date":"2026-08-08","include_details":true,"details_limit":10}'
+```
+
+The API branches to `GetExploreDestinations`. If `include_details` is true, it
+also calls `GetExploreDestinationFlightDetails` for up to `details_limit` rows.
+
+## 4. Search A Specific Destination
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/flights/search \
+  -H 'content-type: application/json' \
+  -d '{"origin":"SFO","destination":"LAX","outbound_date":"2026-08-01","return_date":"2026-08-08"}'
+```
+
+The API branches to `GetShoppingResults`.
+
+## 5. Watch Logs
+
+Useful log messages:
+
+```text
+api.search.request
+google_flights.session.cache_hit
+google_flights.session.cache_invalid
+google_flights.session.refresh_start
+google_flights.rpc.start
+google_flights.rpc.done
+google_flights.search.parsed
+google_flights.search.retry_after_failure
+```
+
+## 6. Run Tests
+
+```bash
+python3 -m unittest discover -v
+```
