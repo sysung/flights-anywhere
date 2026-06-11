@@ -1,0 +1,732 @@
+{
+  "AMS": {
+    "entity_id": "/m/0k3p",
+    "name": "Amsterdam",
+    "country": "Netherlands",
+    "coordinates": [
+      52.3675734,
+      4.9041389
+    ],
+    "type": 4
+  },
+  "ANC": {
+    "entity_id": "/m/0g_wn2",
+    "name": "Anchorage",
+    "country": "United States",
+    "coordinates": [
+      61.2175758,
+      -149.8996785
+    ],
+    "type": 4
+  },
+  "ANYWHERE": {
+    "entity_id": "/m/02j71",
+    "name": "Anywhere",
+    "type": 6
+  },
+  "ATH": {
+    "entity_id": "/m/0n2z",
+    "name": "Athens",
+    "country": "Greece",
+    "coordinates": [
+      37.9838096,
+      23.7275388
+    ],
+    "type": 4
+  },
+  "ATL": {
+    "entity_id": "/m/013yq",
+    "name": "Atlanta",
+    "country": "United States",
+    "coordinates": [
+      33.7501275,
+      -84.3885209
+    ],
+    "type": 4
+  },
+  "AUS": {
+    "entity_id": "/m/0vzm",
+    "name": "Austin",
+    "country": "United States",
+    "coordinates": [
+      30.267153,
+      -97.7430608
+    ],
+    "type": 4
+  },
+  "BCN": {
+    "entity_id": "/m/01f62",
+    "name": "Barcelona",
+    "country": "Spain",
+    "coordinates": [
+      41.3874374,
+      2.1686496
+    ],
+    "type": 4
+  },
+  "BKK": {
+    "entity_id": "/m/0fn2g",
+    "name": "Bangkok",
+    "country": "Thailand",
+    "coordinates": [
+      13.7563309,
+      100.5017651
+    ],
+    "type": 4
+  },
+  "BNA": {
+    "entity_id": "/m/05jbn",
+    "name": "Nashville",
+    "country": "United States",
+    "coordinates": [
+      36.1626638,
+      -86.7816016
+    ],
+    "type": 4
+  },
+  "BOB": {
+    "entity_id": "/m/02j_kj",
+    "name": "Bora Bora",
+    "country": "French Polynesia",
+    "coordinates": [
+      -16.5004126,
+      -151.7414904
+    ],
+    "type": 4
+  },
+  "BOM": {
+    "entity_id": "/m/04vmp",
+    "name": "Mumbai",
+    "country": "India",
+    "coordinates": [
+      18.9582347,
+      72.8319514
+    ],
+    "type": 4
+  },
+  "BOS": {
+    "entity_id": "/m/01cx_",
+    "name": "Boston",
+    "country": "United States",
+    "coordinates": [
+      42.3555076,
+      -71.0565364
+    ],
+    "type": 4
+  },
+  "CGK": {
+    "entity_id": "/m/044rv",
+    "name": "Jakarta",
+    "country": "Indonesia",
+    "coordinates": [
+      -6.1944491,
+      106.8229198
+    ],
+    "type": 4
+  },
+  "CPT": {
+    "entity_id": "/m/01yj2",
+    "name": "Cape Town",
+    "country": "South Africa",
+    "coordinates": [
+      -33.922087,
+      18.4231418
+    ],
+    "type": 4
+  },
+  "CUN": {
+    "entity_id": "/m/01q98m",
+    "name": "Canc\u00fan",
+    "country": "Mexico",
+    "coordinates": [
+      21.161908,
+      -86.8515279
+    ],
+    "type": 4
+  },
+  "DCA": {
+    "entity_id": "/m/0rh6k",
+    "name": "Washington, D.C.",
+    "country": "United States",
+    "coordinates": [
+      38.9072873,
+      -77.0369274
+    ],
+    "type": 4
+  },
+  "DEL": {
+    "entity_id": "/m/0dlv0",
+    "name": "New Delhi",
+    "country": "India",
+    "coordinates": [
+      28.6139298,
+      77.2088282
+    ],
+    "type": 4
+  },
+  "DEN": {
+    "entity_id": "/m/02cl1",
+    "name": "Denver",
+    "country": "United States",
+    "coordinates": [
+      39.7392358,
+      -104.990251
+    ],
+    "type": 4
+  },
+  "DUB": {
+    "entity_id": "/m/02cft",
+    "name": "Dublin",
+    "country": "Ireland",
+    "coordinates": [
+      53.3498053,
+      -6.2603097
+    ],
+    "type": 4
+  },
+  "DUD": {
+    "entity_id": "/m/02y9wq",
+    "name": "Dunedin",
+    "country": "New Zealand",
+    "coordinates": [
+      -45.8795455,
+      170.5005957
+    ],
+    "type": 4
+  },
+  "DXB": {
+    "entity_id": "/m/01f08r",
+    "name": "Dubai",
+    "country": "United Arab Emirates",
+    "coordinates": [
+      25.2048493,
+      55.2707828
+    ],
+    "type": 4
+  },
+  "EDI": {
+    "entity_id": "/m/02m77",
+    "name": "Edinburgh",
+    "country": "United Kingdom",
+    "coordinates": [
+      55.953252,
+      -3.188267
+    ],
+    "type": 4
+  },
+  "EZE": {
+    "entity_id": "/m/01ly5m",
+    "name": "Buenos Aires",
+    "country": "Argentina",
+    "coordinates": [
+      -34.6036739,
+      -58.3821215
+    ],
+    "type": 4
+  },
+  "FAI": {
+    "entity_id": "/m/0qf5p",
+    "name": "Fairbanks",
+    "country": "United States",
+    "coordinates": [
+      64.8400511,
+      -147.7199756
+    ],
+    "type": 4
+  },
+  "FCO": {
+    "entity_id": "/m/06c62",
+    "name": "Rome",
+    "country": "Italy",
+    "coordinates": [
+      41.8967068,
+      12.4822025
+    ],
+    "type": 4
+  },
+  "FTE": {
+    "entity_id": "/m/0bzq9k",
+    "name": "El Calafate",
+    "country": "Argentina",
+    "coordinates": [
+      -50.337969,
+      -72.2647981
+    ],
+    "type": 4
+  },
+  "GIG": {
+    "entity_id": "/m/06gmr",
+    "name": "Rio de Janeiro",
+    "country": "Brazil",
+    "coordinates": [
+      -22.9068467,
+      -43.1728965
+    ],
+    "type": 4
+  },
+  "GPS": {
+    "entity_id": "/m/0cd9lt",
+    "name": "Baltra Island",
+    "country": "Ecuador",
+    "coordinates": [
+      -0.459667,
+      -90.2713944
+    ],
+    "type": 4
+  },
+  "HKG": {
+    "entity_id": "/m/03h64",
+    "name": "Hong Kong",
+    "country": "Hong Kong",
+    "coordinates": [
+      22.3193039,
+      114.1693611
+    ],
+    "type": 4
+  },
+  "HNL": {
+    "entity_id": "/m/02hrh0_",
+    "name": "Honolulu",
+    "country": "United States",
+    "coordinates": [
+      21.3098845,
+      -157.8581401
+    ],
+    "type": 4
+  },
+  "HRB": {
+    "entity_id": "/m/0123gq",
+    "name": "Harbin",
+    "country": "China",
+    "coordinates": [
+      45.7567307,
+      126.6424173
+    ],
+    "type": 4
+  },
+  "IPC": {
+    "entity_id": "/m/0d_zz",
+    "name": "Easter Island",
+    "country": "Chile",
+    "coordinates": [
+      -27.112723,
+      -109.3496865
+    ],
+    "type": 4
+  },
+  "IST": {
+    "entity_id": "/m/09949m",
+    "name": "Istanbul",
+    "country": "T\u00fcrkiye",
+    "coordinates": [
+      41.0082376,
+      28.9783589
+    ],
+    "type": 4
+  },
+  "JNB": {
+    "entity_id": "/m/0g284",
+    "name": "Johannesburg",
+    "country": "South Africa",
+    "coordinates": [
+      -26.205647,
+      28.0337185
+    ],
+    "type": 4
+  },
+  "KIX": {
+    "entity_id": "/m/0dqyw",
+    "name": "Osaka",
+    "country": "Japan",
+    "coordinates": [
+      34.6937249,
+      135.5022535
+    ],
+    "type": 4
+  },
+  "KZN": {
+    "entity_id": "/m/01cr28",
+    "name": "Kazan",
+    "country": "Russia",
+    "coordinates": [
+      55.7878944,
+      49.1233293
+    ],
+    "type": 4
+  },
+  "LAS": {
+    "entity_id": "/m/0cv3w",
+    "name": "Las Vegas",
+    "country": "United States",
+    "coordinates": [
+      36.171563,
+      -115.1391009
+    ],
+    "type": 4
+  },
+  "LAX": {
+    "entity_id": "/m/030qb3t",
+    "name": "Los Angeles",
+    "country": "United States",
+    "coordinates": [
+      34.0549076,
+      -118.242643
+    ],
+    "type": 4
+  },
+  "LGA": {
+    "entity_id": "/m/02_286",
+    "name": "New York",
+    "country": "United States",
+    "coordinates": [
+      40.7127753,
+      -74.0059728
+    ],
+    "type": 4
+  },
+  "LGW": {
+    "entity_id": "/m/04jpl",
+    "name": "London",
+    "country": "United Kingdom",
+    "coordinates": [
+      51.5072178,
+      -0.1275862
+    ],
+    "type": 4
+  },
+  "LIH": {
+    "entity_id": "/m/0jbsn",
+    "name": "Kauai",
+    "country": "United States",
+    "coordinates": [
+      22.0964396,
+      -159.5261238
+    ],
+    "type": 4
+  },
+  "LIM": {
+    "entity_id": "/m/0lpfh",
+    "name": "Lima",
+    "country": "Peru",
+    "coordinates": [
+      -12.0466888,
+      -77.0430886
+    ],
+    "type": 4
+  },
+  "LIS": {
+    "entity_id": "/m/04llb",
+    "name": "Lisbon",
+    "country": "Portugal",
+    "coordinates": [
+      38.7222524,
+      -9.1393366
+    ],
+    "type": 4
+  },
+  "MAD": {
+    "entity_id": "/m/056_y",
+    "name": "Madrid",
+    "country": "Spain",
+    "coordinates": [
+      40.4167279,
+      -3.7032905
+    ],
+    "type": 4
+  },
+  "MCO": {
+    "entity_id": "/m/0ply0",
+    "name": "Orlando",
+    "country": "United States",
+    "coordinates": [
+      28.5383832,
+      -81.3789269
+    ],
+    "type": 4
+  },
+  "MEL": {
+    "entity_id": "/m/0chgzm",
+    "name": "Melbourne",
+    "country": "Australia",
+    "coordinates": [
+      -37.8136276,
+      144.9630576
+    ],
+    "type": 4
+  },
+  "MIA": {
+    "entity_id": "/m/0f2v0",
+    "name": "Miami",
+    "country": "United States",
+    "coordinates": [
+      25.7616798,
+      -80.1917902
+    ],
+    "type": 4
+  },
+  "MLA": {
+    "entity_id": "/m/04v3q",
+    "name": "Malta",
+    "country": "Malta",
+    "coordinates": [
+      35.937496,
+      14.375416
+    ],
+    "type": 4
+  },
+  "MRU": {
+    "entity_id": "/g/112yfdt1m",
+    "name": "Mauritius Island",
+    "country": "Mauritius",
+    "coordinates": [
+      -20.3,
+      57.5833333
+    ],
+    "type": 4
+  },
+  "MSY": {
+    "entity_id": "/m/0f2tj",
+    "name": "New Orleans",
+    "country": "United States",
+    "coordinates": [
+      29.9508941,
+      -90.0758356
+    ],
+    "type": 4
+  },
+  "NQZ": {
+    "entity_id": "/m/0fn08",
+    "name": "Astana",
+    "country": "Kazakhstan",
+    "coordinates": [
+      51.1655126,
+      71.4272222
+    ],
+    "type": 4
+  },
+  "NRT": {
+    "entity_id": "/m/07dfk",
+    "name": "Tokyo",
+    "country": "Japan",
+    "coordinates": [
+      35.6764225,
+      139.650027
+    ],
+    "type": 4
+  },
+  "ORD": {
+    "entity_id": "/m/01_d4",
+    "name": "Chicago",
+    "country": "United States",
+    "coordinates": [
+      41.88325,
+      -87.6323879
+    ],
+    "type": 4
+  },
+  "ORY": {
+    "entity_id": "/m/05qtj",
+    "name": "Paris",
+    "country": "France",
+    "coordinates": [
+      48.8575475,
+      2.3513765
+    ],
+    "type": 4
+  },
+  "PDX": {
+    "entity_id": "/m/02frhbc",
+    "name": "Portland",
+    "country": "United States",
+    "coordinates": [
+      45.515232,
+      -122.6783853
+    ],
+    "type": 4
+  },
+  "PER": {
+    "entity_id": "/m/062qg",
+    "name": "Perth",
+    "country": "Australia",
+    "coordinates": [
+      -31.9513993,
+      115.8616783
+    ],
+    "type": 4
+  },
+  "PHL": {
+    "entity_id": "/m/0dclg",
+    "name": "Philadelphia",
+    "country": "United States",
+    "coordinates": [
+      39.9525839,
+      -75.1652215
+    ],
+    "type": 4
+  },
+  "PPT": {
+    "entity_id": "/m/0hb6g",
+    "name": "Tahiti",
+    "country": "French Polynesia",
+    "coordinates": [
+      -17.6509195,
+      -149.4260421
+    ],
+    "type": 4
+  },
+  "SAN": {
+    "entity_id": "/m/071vr",
+    "name": "San Diego",
+    "country": "United States",
+    "coordinates": [
+      32.715738,
+      -117.1610838
+    ],
+    "type": 4
+  },
+  "SEA": {
+    "entity_id": "/m/0d9jr",
+    "name": "Seattle",
+    "country": "United States",
+    "coordinates": [
+      47.6061389,
+      -122.3328481
+    ],
+    "type": 4
+  },
+  "SEZ": {
+    "entity_id": "/m/06j45z",
+    "name": "Mah\u00e9",
+    "country": "Seychelles",
+    "coordinates": [
+      -4.6826693,
+      55.480396
+    ],
+    "type": 4
+  },
+  "SFO": {
+    "entity_id": "/m/0r5yp",
+    "name": "San Francisco International Airport",
+    "type": 5
+  },
+  "SIN": {
+    "entity_id": "/m/06t2t",
+    "name": "Singapore",
+    "country": "Singapore",
+    "coordinates": [
+      1.352083,
+      103.819836
+    ],
+    "type": 4
+  },
+  "SSA": {
+    "entity_id": "/m/09wwlj",
+    "name": "Salvador",
+    "country": "Brazil",
+    "coordinates": [
+      -12.9777334,
+      -38.501648
+    ],
+    "type": 4
+  },
+  "SYD": {
+    "entity_id": "/m/06y57",
+    "name": "Sydney",
+    "country": "Australia",
+    "coordinates": [
+      -33.8622491,
+      151.2076919
+    ],
+    "type": 4
+  },
+  "UBN": {
+    "entity_id": "/m/0hqkg",
+    "name": "Ulaanbaatar",
+    "country": "Mongolia",
+    "coordinates": [
+      47.9220509,
+      106.9155007
+    ],
+    "type": 4
+  },
+  "USH": {
+    "entity_id": "/m/01zdns",
+    "name": "Ushuaia",
+    "country": "Argentina",
+    "coordinates": [
+      -54.8076116,
+      -68.3058409
+    ],
+    "type": 4
+  },
+  "VCE": {
+    "entity_id": "/m/07_pf",
+    "name": "Venice",
+    "country": "Italy",
+    "coordinates": [
+      45.440379,
+      12.3159547
+    ],
+    "type": 4
+  },
+  "WKJ": {
+    "entity_id": "/m/01wdrf",
+    "name": "Wakkanai",
+    "country": "Japan",
+    "coordinates": [
+      45.4156307,
+      141.6733641
+    ],
+    "type": 4
+  },
+  "YQB": {
+    "entity_id": "/m/0pmp2",
+    "name": "Qu\u00e9bec City",
+    "country": "Canada",
+    "coordinates": [
+      46.8130816,
+      -71.2074596
+    ],
+    "type": 4
+  },
+  "YUL": {
+    "entity_id": "/m/052p7",
+    "name": "Montreal",
+    "country": "Canada",
+    "coordinates": [
+      45.5018869,
+      -73.5673919
+    ],
+    "type": 4
+  },
+  "YVR": {
+    "entity_id": "/m/080h2",
+    "name": "Vancouver",
+    "country": "Canada",
+    "coordinates": [
+      49.2827291,
+      -123.1207375
+    ],
+    "type": 4
+  },
+  "YYZ": {
+    "entity_id": "/m/0h7h6",
+    "name": "Toronto",
+    "country": "Canada",
+    "coordinates": [
+      43.6548253,
+      -79.388447
+    ],
+    "type": 4
+  },
+  "ZQN": {
+    "entity_id": "/m/017cf7",
+    "name": "Queenstown",
+    "country": "New Zealand",
+    "coordinates": [
+      -45.0301511,
+      168.6615141
+    ],
+    "type": 4
+  }
+}

@@ -12,3 +12,9 @@ google-cloud-cli-*.tar.gz
 
 .superpowers
 .agent/
+artifacts
+.pytest_cache
+api/.session/
+
+.agents
+.codex
