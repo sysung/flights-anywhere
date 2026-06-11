@@ -83,6 +83,189 @@ sequenceDiagram
     UI-->>User: Show checkout choices
 ```
 
+## API Architecture
+
+All Google calls use the same private service path:
+
+```text
+/_/FlightsFrontendUi/data/travel.frontend.flights.FlightsFrontendService/{RPC}
+```
+
+Relevant RPCs:
+
+```text
+GetExploreDestinations
+GetExploreDestinationFlightDetails
+GetShoppingResults
+GetBookingResults
+```
+
+Implemented today:
+
+- `GetExploreDestinations`
+- `GetExploreDestinationFlightDetails`
+- initial `GetShoppingResults` branch scaffold
+
+Planned:
+
+- selected-outbound `GetShoppingResults`
+- `GetBookingResults`
+
+### Google Request Envelope
+
+Google expects form-encoded RPC calls:
+
+```text
+POST application/x-www-form-urlencoded
+f.req=[null,"<double-serialized request array>"]&at=<optional token>&
+```
+
+The API captures and stores:
+
+- service URL with `f.sid`, `bl`, `hl`, and related query params
+- browser headers and cookies
+- optional `at`
+- a stable seed `f.req`
+
+The captured request body's original `f.req` is intentionally replaced with a
+known-good seed shape. This avoids failures caused by Google emitting partial
+page-specific request bodies during session capture.
+
+### Public API
+
+```text
+GET  /healthz
+POST /api/flights/search
+```
+
+`GET /healthz` returns:
+
+```json
+{"status": "ok"}
+```
+
+`POST /api/flights/search` accepts:
+
+```json
+{
+  "origin": "SFO",
+  "destination": null,
+  "outbound_date": "2026-08-01",
+  "return_date": "2026-08-08",
+  "nonstop": false,
+  "include_details": true,
+  "details_limit": 10
+}
+```
+
+The response uses one normalized envelope:
+
+```json
+{
+  "mode": "explore",
+  "selection_stage": "results",
+  "query": {
+    "origin": "SFO",
+    "destination": null,
+    "outbound_date": "2026-08-01",
+    "return_date": "2026-08-08"
+  },
+  "results": [
+    {
+      "source": "explore",
+      "selection_stage": "destination",
+      "origin": "SFO",
+      "dest": "LAX",
+      "price": 106,
+      "currency": "USD",
+      "airline": "Frontier",
+      "stops": 0,
+      "duration_minutes": 96,
+      "flight_num": "F92858",
+      "flight_nums": ["F92858"],
+      "route_token": "...",
+      "option_token": "...",
+      "outbound_options": []
+    }
+  ],
+  "workflow_state": {
+    "mode": "explore",
+    "can_select_outbound": false,
+    "can_book": false
+  }
+}
+```
+
+### Internal Layers
+
+```text
+FastAPI route
+  -> GoogleFlightsService
+    -> SessionManager
+    -> entity resolver
+    -> request builders
+    -> transport
+    -> response parsers
+    -> normalized Pydantic models
+```
+
+### Session Management
+
+The API owns Google session state:
+
+```text
+api/.session/google_flights_session.json
+```
+
+`SessionManager`:
+
+- caches sessions in memory
+- persists sessions to `api/.session/`
+- validates cached `f.req` leg shape
+- refreshes with Playwright when missing, stale, malformed, or after a failed RPC
+- uses a one-hour TTL by default
+
+### Entity Resolution
+
+Airport IATA codes are mapped to Google entity ids using:
+
+```text
+data/google_flights_entities.json
+```
+
+`ANYWHERE` maps to:
+
+```text
+/m/02j71
+```
+
+### Builders, Transport, And Parsers
+
+Builders:
+
+- mutate the stable seed `f.req`
+- set origin/destination entity ids
+- set outbound/return dates
+- set nonstop flag
+- produce Explore, Shopping, and details request bodies
+
+Transport:
+
+- swaps the RPC name in the captured service URL
+- strips invalid replay headers such as `:authority`, `content-length`, `host`,
+  and `accept-encoding`
+- posts form bodies with `httpx`
+- logs RPC start/end, status, elapsed time, and response bytes
+
+Parsers:
+
+- decode Google RPC response streams beginning with `)]}'`
+- walk nested JSON arrays
+- identify Explore destination rows
+- identify flight option rows
+- decode exact flight numbers from option tokens
+- return normalized `FlightOption` objects
+
 ## Current Implementation
 
 Implemented:
@@ -128,3 +311,32 @@ Not yet implemented:
    `GetBookingResults` responses.
 4. Add a small frontend for choosing outbound/return/booking options.
 5. Add request rate limiting, structured retries, and cache popular searches.
+
+## Testing
+
+Run:
+
+```bash
+python3 -m unittest discover -v
+```
+
+Current tests cover:
+
+- entity resolution
+- `f.req` encode/decode
+- stable seed request shape
+- session TTL/corrupt/malformed cache refresh
+- builder mutation
+- Explore parsing and dedupe
+- option parsing and multi-flight-number extraction
+- Explore details limit behavior
+- HTTP retry after Google failures
+- API error mapping
+- `GET /healthz`
+
+## Operational Notes
+
+- These are private browser RPCs and can break if Google changes payload shape.
+- Session files contain cookies and metadata; do not commit `api/.session/`.
+- Use `docker compose down -v` to clear an old malformed session volume.
+- Use `LOG_LEVEL=INFO` for useful runtime diagnostics.
