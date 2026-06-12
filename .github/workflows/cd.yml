@@ -1,22 +1,78 @@
 name: CD Deployment
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - CI
     branches:
       - main
+    types:
+      - completed
+  workflow_dispatch:
 
 jobs:
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE || 'flights-anywhere' }}
+      RAILWAY_ENVIRONMENT: ${{ vars.RAILWAY_ENVIRONMENT || 'production' }}
+      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.5-flash' }}
+      GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS: ${{ vars.GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS || '45' }}
+      GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN: ${{ vars.GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN || 'SFO' }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Deploy to Railway
-        run: railway up --service flights-anywhere --detach
+      - name: Sync Railway variables from GitHub
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          GOOGLE_CLOUD_API_KEY: ${{ secrets.GOOGLE_CLOUD_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RAILWAY_TOKEN:-}" ]; then
+            echo "RAILWAY_TOKEN GitHub secret is required."
+            exit 1
+          fi
+
+          if [ -z "${GOOGLE_CLOUD_API_KEY:-}" ]; then
+            echo "GOOGLE_CLOUD_API_KEY GitHub secret is required."
+            exit 1
+          fi
+
+          railway_args=(--service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT")
+          if [ -n "${RAILWAY_PROJECT_ID:-}" ]; then
+            railway_args+=(--project "$RAILWAY_PROJECT_ID")
+          fi
+
+          railway variable set ENVIRONMENT=production "${railway_args[@]}" --skip-deploys
+          railway variable set LOG_LEVEL=INFO "${railway_args[@]}" --skip-deploys
+          railway variable set "GEMINI_MODEL=$GEMINI_MODEL" "${railway_args[@]}" --skip-deploys
+          railway variable set GOOGLE_FLIGHTS_SESSION_PATH=/app/api/.session/google_flights_session.json "${railway_args[@]}" --skip-deploys
+          railway variable set GOOGLE_FLIGHTS_SESSION_TTL_SECONDS=3600 "${railway_args[@]}" --skip-deploys
+          railway variable set "GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS=$GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS" "${railway_args[@]}" --skip-deploys
+          railway variable set "GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN=$GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN" "${railway_args[@]}" --skip-deploys
+          printf '%s' "$GOOGLE_CLOUD_API_KEY" | railway variable set GOOGLE_CLOUD_API_KEY --stdin "${railway_args[@]}" --skip-deploys
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          railway_args=(--service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT")
+          if [ -n "${RAILWAY_PROJECT_ID:-}" ]; then
+            railway_args+=(--project "$RAILWAY_PROJECT_ID")
+          fi
+          railway up --detach --yes "${railway_args[@]}"
+
+      - name: Smoke test health endpoint
+        if: ${{ vars.RAILWAY_PUBLIC_URL != '' }}
+        run: curl --fail --retry 5 --retry-delay 10 "${{ vars.RAILWAY_PUBLIC_URL }}/healthz"
