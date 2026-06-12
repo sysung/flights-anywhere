@@ -1,6 +1,13 @@
 .env
 .take-home-token
 node_modules/
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
 __pycache__/
 .venv/
 .DS_Store
@@ -15,6 +22,8 @@ google-cloud-cli-*.tar.gz
 artifacts
 .pytest_cache
 api/.session/
+flights.json
+google_flights_session.json
 
 .agents
 .codex

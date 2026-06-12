@@ -24,6 +24,10 @@ class GoogleFlightsService:
         try:
             return self._search_once(query, refresh=False)
         except (httpx.HTTPError, TimeoutError, RuntimeError, ValueError) as exc:
+            if isinstance(exc, TimeoutError):
+                logger.warning("google_flights.search.session_timeout error=%s", exc)
+                self.sessions.invalidate()
+                raise
             logger.warning("google_flights.search.retry_after_failure error=%s", exc)
             if "session f.req" not in str(exc) and isinstance(exc, ValueError):
                 raise

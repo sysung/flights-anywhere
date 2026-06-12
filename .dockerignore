@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+__pycache__
+.pytest_cache
+api/.session
+web/node_modules
+web/dist
+node_modules
+.env
+flights.json
+google_flights_session.json

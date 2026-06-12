@@ -38,8 +38,10 @@ def explore_details_request(
 def _set_legs(block: list[Any], query: Any, origin: Place, dest: Place) -> None:
     try:
         legs = block[13]
-        for leg_index, side in ((0, 0), (0, 1), (1, 0), (1, 1)):
-            if len(legs[leg_index][side][0][0]) < 2:
+        if len(legs) < 2:
+            raise IndexError
+        for leg in legs[:2]:
+            if len(leg) < 2:
                 raise IndexError
     except (IndexError, TypeError) as exc:
         raise ValueError("Google Flights session f.req has an unsupported leg shape; refresh the session.") from exc
@@ -53,10 +55,24 @@ def _set_legs(block: list[Any], query: Any, origin: Place, dest: Place) -> None:
         (1, 1, origin.entity_id, origin_type),
     ]
     for leg_index, side, entity_id, entity_type in values:
-        legs[leg_index][side][0][0][0] = entity_id
-        legs[leg_index][side][0][0][1] = entity_type
-    legs[0][6] = query.outbound_date
-    legs[1][6] = query.return_date
+        _set_place(legs[leg_index], side, entity_id, entity_type)
+    _set_date(legs[0], query.outbound_date)
+    _set_date(legs[1], query.return_date)
     if query.nonstop is not None:
         for leg in legs:
             leg[3] = 1 if query.nonstop else 0
+
+
+def _set_place(leg: list[Any], side: int, entity_id: str, entity_type: int) -> None:
+    if len(leg) <= side:
+        leg.extend([] for _ in range(side + 1 - len(leg)))
+    if not leg[side]:
+        leg[side] = [[[None, None]]]
+    leg[side][0][0][0] = entity_id
+    leg[side][0][0][1] = entity_type
+
+
+def _set_date(leg: list[Any], value: str) -> None:
+    if len(leg) <= 6:
+        leg.extend([None] * (7 - len(leg)))
+    leg[6] = value

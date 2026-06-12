@@ -17,7 +17,7 @@ from api.google_flights.entities import Place, resolve_place
 from api.google_flights.models import FlightSearchRequest, SearchResponse
 from api.google_flights.parsers import parse_explore, parse_flight_options
 from api.google_flights.service import GoogleFlightsService
-from api.google_flights.session import SessionManager, SessionTemplate, _seed_f_req
+from api.google_flights.session import SessionManager, SessionTemplate, _has_mutable_round_trip_legs, _seed_f_req, _select_bootstrap_origin
 
 logging.disable(logging.CRITICAL)
 
@@ -160,6 +160,43 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(legs[1][0][0][0][0], "/m/02j71")
         self.assertEqual(legs[1][1][0][0][0], "/m/0r5yp")
 
+    def test_compact_origin_only_f_req_is_accepted_and_repaired(self) -> None:
+        compact_inner = [
+            [],
+            None,
+            None,
+            [
+                None,
+                None,
+                1,
+                None,
+                [],
+                1,
+                [1, 0, 0, 0],
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                [
+                    [[[["SFO", 0]]], [], None, 0],
+                    [[], [[["SFO", 0]]], None, 0],
+                ],
+            ],
+        ]
+        data = encode_inner(compact_inner, {"at": ""})
+        query = FlightSearchRequest(origin="SFO", outbound_date="2026-09-01", return_date="2026-09-08")
+
+        self.assertTrue(_has_mutable_round_trip_legs(data))
+        mutated = decode_f_req(explore_request(compact_inner, {"at": ""}, query, Place("SFO", "/m/0r5yp", type=5), Place("ANYWHERE", "/m/02j71", type=6)))[1]
+        legs = mutated[3][13]
+
+        self.assertEqual(legs[0][0][0][0], ["/m/0r5yp", 5])
+        self.assertEqual(legs[0][1][0][0], ["/m/02j71", 6])
+        self.assertEqual(legs[0][6], "2026-09-01")
+        self.assertEqual(legs[1][6], "2026-09-08")
+
     def test_session_manager_refreshes_bad_cached_session_shape(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = f"{tmp}/session.json"
@@ -189,6 +226,64 @@ class UnitTests(unittest.TestCase):
             with patch("api.google_flights.session.capture_session", return_value=fresh) as capture:
                 self.assertEqual(manager.get().url, session_template().url)
                 self.assertEqual(capture.call_count, 1)
+
+    def test_select_bootstrap_origin_uses_visible_origin_picker(self) -> None:
+        class FakeKeyboard:
+            def __init__(self) -> None:
+                self.actions = []
+
+            def press(self, value: str) -> None:
+                self.actions.append(("press", value))
+
+            def type(self, value: str) -> None:
+                self.actions.append(("type", value))
+
+        class FakeLocator:
+            def __init__(self, page, selector: str) -> None:
+                self.page = page
+                self.selector = selector
+                self.first = self
+
+            def inner_text(self, timeout: int | None = None) -> str:
+                return self.page.body
+
+            def is_visible(self, timeout: int | None = None) -> bool:
+                return self.selector == 'input[placeholder="Where from?"]'
+
+            def click(self, timeout: int | None = None) -> None:
+                self.page.clicks.append(self.selector)
+
+        class FakeText:
+            def __init__(self, page, text: str) -> None:
+                self.page = page
+                self.text = text
+                self.first = self
+
+            def click(self, timeout: int | None = None) -> None:
+                self.page.clicks.append(self.text)
+
+        class FakePage:
+            def __init__(self) -> None:
+                self.body = "Where are you flying from?"
+                self.keyboard = FakeKeyboard()
+                self.clicks = []
+
+            def locator(self, selector: str) -> FakeLocator:
+                return FakeLocator(self, selector)
+
+            def get_by_text(self, text: str, exact: bool = False) -> FakeText:
+                return FakeText(self, text)
+
+            def wait_for_timeout(self, _milliseconds: int) -> None:
+                pass
+
+        page = FakePage()
+
+        _select_bootstrap_origin(page, "SFO")
+
+        self.assertIn('input[placeholder="Where from?"]', page.clicks)
+        self.assertIn("San Francisco International Airport", page.clicks)
+        self.assertIn(("type", "SFO"), page.keyboard.actions)
 
     def test_builders_mutate_explore_and_shopping_requests(self) -> None:
         query = FlightSearchRequest(
@@ -363,6 +458,31 @@ class IntegrationTests(unittest.TestCase):
 
         self.assertEqual(manager.refresh_count, 1)
         self.assertEqual(response.results[0].dest, "LAX")
+
+    def test_service_does_not_retry_session_capture_timeout(self) -> None:
+        class TimeoutSessionManager:
+            def __init__(self) -> None:
+                self.refresh_count = 0
+                self.invalidate_count = 0
+
+            def get(self) -> SessionTemplate:
+                raise TimeoutError("Timed out waiting for a Google Flights session request.")
+
+            def refresh(self) -> SessionTemplate:
+                self.refresh_count += 1
+                return session_template()
+
+            def invalidate(self) -> None:
+                self.invalidate_count += 1
+
+        query = FlightSearchRequest(origin="SFO", outbound_date="2026-08-01", return_date="2026-08-08")
+        manager = TimeoutSessionManager()
+
+        with self.assertRaises(TimeoutError):
+            GoogleFlightsService(manager).search(query)  # type: ignore[arg-type]
+
+        self.assertEqual(manager.refresh_count, 0)
+        self.assertEqual(manager.invalidate_count, 1)
 
 
 class E2ETests(unittest.TestCase):

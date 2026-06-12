@@ -1,13 +1,26 @@
 services:
   api:
     build: .
+    image: flights-anywhere:local
     ports:
       - "8000:8000"
     environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      GOOGLE_CLOUD_API_KEY: ${GOOGLE_CLOUD_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
       GOOGLE_FLIGHTS_SESSION_PATH: /app/api/.session/google_flights_session.json
       GOOGLE_FLIGHTS_SESSION_TTL_SECONDS: "3600"
+      GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS: ${GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS:-45}
+      GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN: ${GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN:-SFO}
     volumes:
       - google_flights_session:/app/api/.session
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
 volumes:
   google_flights_session:
