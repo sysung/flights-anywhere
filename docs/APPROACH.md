@@ -1,12 +1,17 @@
 # Approach
 
+Live URL: https://flights-anywhere-production.up.railway.app
+
 ## Product Shape
 
 Flights Anywhere is now an AI destination discovery app, not just a flight API
-wrapper. The first screen is a React/MUI interface with a compact search
-toolbar, active filter chips, a pop-out filter drawer, recommendation cards,
-and an AI chat panel. The backend remains FastAPI and continues to own the
-Google Flights RPC integration.
+wrapper. The first screen is a React/MUI interface with an inline search
+toolbar, an AI chat panel, recommendation cards, and active filter pills that
+summarize the current search. When an exact match does not survive every
+constraint, the app first returns broader close matches and only falls back to
+verified alternate filter bundles when it needs to relax the search further.
+The backend remains FastAPI and continues to own the Google Flights RPC
+integration.
 
 This project exists because Google Flights offers a uniquely useful "anywhere"
 discovery experience and rich shopping results, but there is no public API for
@@ -18,28 +23,63 @@ The app has three public surfaces:
 
 - The web UI at `/`, served by FastAPI from the built Vite bundle.
 - REST endpoints under `/api`.
-- A stdio MCP server for agent and tool clients.
+- A Streamable HTTP MCP endpoint at `/mcp`.
 
 ## Runtime Architecture
 
-```text
-React/MUI UI
-  -> POST /api/travel/recommend
-    -> TravelRecommendationService
-      -> TravelIntentExtractor
-      -> WeatherProvider / PlacesProvider
-      -> GoogleFlightsService
-        -> SessionManager
-        -> entity resolver
-        -> request builders
-        -> Google Flights private RPC transport
-        -> response parsers
-      -> ranking and recommendation response
+```mermaid
+flowchart LR
+    browser[User Browser]
+    agent[MCP Client]
+    google[Google Flights private RPCs]
+
+    subgraph railway["Railway deployment"]
+        uvicorn[Uvicorn]
+        fastapi[FastAPI]
+        web[React + MUI bundle\nbuilt by Vite]
+        recommend[TravelRecommendationService]
+        intent[TravelIntentExtractor]
+        weather[ProfileWeatherProvider]
+        places[ProfilePlacesProvider]
+        flights[GoogleFlightsService]
+        session[SessionManager]
+        playwright[Playwright Chromium]
+        mcp[FastMCP Streamable HTTP]
+
+        uvicorn -->|runs| fastapi
+        fastapi -->|serves `/`| web
+        fastapi -->|handles `/api/travel/*`| recommend
+        fastapi -->|handles `/api/flights/search`| flights
+        fastapi -->|mounts `/mcp`| mcp
+        recommend -->|extracts trip intent| intent
+        recommend -->|scores weather fit| weather
+        recommend -->|scores places fit| places
+        recommend -->|searches live fares| flights
+        flights -->|loads and refreshes session state| session
+        session -->|captures cookies, headers, seed `f.req`| playwright
+    end
+
+    browser -->|HTTP GET `/` and POST `/api/*`| uvicorn
+    agent -->|Streamable HTTP `/mcp`| uvicorn
+    mcp -->|parse, rank, recommend| recommend
+    mcp -->|search and explore| flights
+    flights -->|HTTP form RPCs| google
+    playwright -->|browser session refresh only| google
 ```
 
-The Docker image builds the frontend first, copies `web/dist` into the Python
-image, and runs one FastAPI process. That means `docker compose up --build`
-starts both the UI and API on `http://localhost:8000/`.
+The Railway service hosts the complete product: Uvicorn, FastAPI, the built
+React bundle, REST endpoints, the Streamable HTTP MCP endpoint, and the shared
+Python services behind both protocols.
+
+That means the two main paths are:
+
+- **Web path:** Browser -> Uvicorn -> FastAPI -> recommendation and flight
+  services -> Google Flights
+- **Tool path:** MCP client -> Uvicorn -> `/mcp` -> recommendation and flight
+  services -> Google Flights
+
+The stdio entrypoint remains available for local clients with
+`python3 -m api.travel.mcp_server`.
 
 ## Key Decisions
 
@@ -50,12 +90,15 @@ starts both the UI and API on `http://localhost:8000/`.
   availability come from Google Flights RPC responses.
 - **Shared recommendation service.** REST endpoints and MCP tools call the
   same backend recommendation logic.
-- **Simple filter UX.** The top toolbar only shows origin, dates, budget, and
-  a filter icon. Advanced filters live in a drawer, and applied filters render
-  as removable chips.
+- **Simple filter UX.** The primary trip controls stay inline in one toolbar,
+  and any active filter appears afterward as a removable pill. The experience
+  avoids duplicating the same controls in a separate drawer.
+- **Soft filtering before fallbacks.** Exact matches are preferred, but the app
+  can return relaxed "Closest match" recommendations before it asks the user to
+  change their filters.
 - **Flexible dates for cheapest trips.** The UI and API can switch from exact
-  outbound and return dates to a flexible window, then search generated date
-  pairs and keep the cheapest result per destination.
+  outbound and return dates to a flexible window, then sample a small set of
+  date pairs across that window and keep the cheapest result per destination.
 - **Swappable enrichment.** Weather and places matching are behind provider
   interfaces, so richer external MCP or API providers can replace the current
   deterministic profile providers later.
@@ -131,6 +174,8 @@ running a flight search:
 - UI actions
 - clarifying question, when origin or dates are missing
 - ranked destination recommendations
+- close-match recommendations when exact matches fail
+- verified fallback options when even the relaxed search needs alternate filters
 
 Flexible-date recommendations use this filter shape:
 
@@ -166,12 +211,17 @@ Planned follow-on workflow endpoints are:
 3. Merge extracted intent with current UI filters.
 4. Ask one clarifying question if origin or dates are missing.
 5. Search Google Flights through `GoogleFlightsService`; flexible-date mode
-   expands into multiple generated outbound and return pairs and dedupes to the
-   cheapest result per destination.
+   samples multiple outbound and return pairs across the requested window and
+   dedupes to the cheapest result per destination.
 6. Enrich candidates with weather and places signals when relevant.
 7. Rank by budget fit, flight quality, weather fit, places and vibe fit, and
    surprise factor.
 8. Return recommendations grounded in real flight results.
+9. If exact matches survive, return them first. Otherwise return broader
+   "Closest match" recommendations that still respect as much of the user's
+   intent as possible.
+10. If even the relaxed pass has nothing useful, generate verified fallback
+    options by relaxing the strictest filters one at a time.
 
 Supported prompt styles include:
 
@@ -181,10 +231,21 @@ Supported prompt styles include:
 - `places with Japanese temples`
 - `cheap beach trip`
 - `cheapest 1 week trip any date in the next 6 months`
+- `find trips that match my filters`
+- `choose any date then for me`
 
 ## MCP Server
 
-Run:
+The all-in-one service exposes Streamable HTTP MCP at:
+
+```text
+http://localhost:8000/mcp
+```
+
+`/mcp` redirects to `/mcp/`, which is the session-oriented endpoint used by
+Streamable HTTP clients.
+
+The standalone stdio transport is also available:
 
 ```bash
 python3 -m api.travel.mcp_server
@@ -199,7 +260,8 @@ Tools:
 - `recommend_destinations`
 
 The MCP server is intentionally thin. Tool wrappers validate payloads and then
-call the same recommendation or flight services used by the REST API.
+call the same recommendation or flight services used by the REST API. The
+deployed HTTP endpoint and the local stdio process expose the same tool set.
 
 ## Google Flights RPC Layer
 
@@ -376,10 +438,12 @@ Implemented:
 - Shopping branch scaffold using `GetShoppingResults`
 - travel intent parsing and filter merging
 - recommendation ranking with weather and places profile enrichment
-- stdio MCP server wrappers for search and recommendation flows
+- relaxed close-match recommendations plus verified fallback option generation
+- Streamable HTTP and stdio MCP wrappers for search and recommendation flows
 - normalized result models
 - `GET /healthz`
 - web bundle served by FastAPI
+- `/mcp` redirect plus mounted Streamable HTTP MCP app
 - Docker and docker compose setup
 - unit, integration, API-boundary, frontend, and E2E tests
 
@@ -429,7 +493,9 @@ Required Railway variables:
 
 GitHub Actions is the deployment orchestrator for production. The CD workflow
 syncs runtime values from GitHub secrets and variables into Railway with the
-Railway CLI, then runs `railway up --detach --yes`.
+Railway CLI, then runs `railway up --detach --yes`. When
+`RAILWAY_PUBLIC_URL` is configured, the workflow also smoke-tests both
+`/healthz` and the deployed MCP endpoint.
 
 Required GitHub Actions secrets:
 
@@ -441,7 +507,7 @@ Recommended GitHub Actions variables:
 - `RAILWAY_SERVICE=flights-anywhere`
 - `RAILWAY_ENVIRONMENT=production`
 - `RAILWAY_PROJECT_ID`, if the repo is not linked to Railway
-- `RAILWAY_PUBLIC_URL`, for the `/healthz` smoke test
+- `RAILWAY_PUBLIC_URL`, for `/healthz` and deployed MCP smoke tests
 - `GEMINI_MODEL=gemini-3.5-flash`
 - `GOOGLE_FLIGHTS_SESSION_CAPTURE_TIMEOUT_SECONDS=45`
 - `GOOGLE_FLIGHTS_SESSION_BOOTSTRAP_ORIGIN=SFO`
@@ -480,7 +546,10 @@ Current coverage includes:
 - HTTP retry after Google failures
 - travel intent parsing and filter merging
 - weather and places-aware ranking
+- relaxed close-match recommendations and verified fallback application paths
 - MCP wrapper smoke tests
+- Streamable HTTP MCP initialization, tool discovery, protocol error recovery,
+  and deployment smoke tests
 - API error mapping and endpoint boundaries
 - frontend filter, chat, and card states
 - Playwright E2E loading and error discovery flows

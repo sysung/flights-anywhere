@@ -10,7 +10,6 @@ import {
   Chip,
   CircularProgress,
   Container,
-  Drawer,
   Fab,
   FormControl,
   Grid,
@@ -26,20 +25,14 @@ import {
   Typography,
   useMediaQuery
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import CloseIcon from "@mui/icons-material/Close";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import FlightTakeoffIcon from "@mui/icons-material/FlightTakeoff";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import SearchIcon from "@mui/icons-material/Search";
 import TravelExploreIcon from "@mui/icons-material/TravelExplore";
 import { recommendTravel, searchFlights } from "./api";
-import { ActiveFilterChip, defaultFilters, FlightSearchResponse, Recommendation, TravelFilters } from "./types";
-
-const climates = ["sunny", "warm", "tropical", "mild", "snowy", "not_rainy"];
-const vibes = ["beaches", "food", "nightlife", "nature", "culture", "family", "romantic", "adventure", "temples", "museums", "budget"];
+import { ActiveFilterChip, defaultFilters, FallbackOption, FlightSearchResponse, Recommendation, TravelFilters } from "./types";
 
 interface ChatMessage {
   role: "assistant" | "user";
@@ -68,30 +61,51 @@ function sourceFor(key: string, activeFilters: ActiveFilterChip[]): ActiveFilter
 }
 
 function activeChipsFromFilters(filters: TravelFilters, activeFilters: ActiveFilterChip[]): ActiveFilterChip[] {
-  const chips: ActiveFilterChip[] = [];
-  const push = (key: string, label: string, value: string) => {
-    if (value) chips.push({ key, label, value, source: sourceFor(key, activeFilters) });
+  const chips = new Map<string, ActiveFilterChip>();
+
+  for (const chip of activeFilters) {
+    if (!chip.value) continue;
+    if (chip.key === "destination" && chip.value === "Anywhere") continue;
+    if (filters.date_mode === "flexible" && (chip.key === "outbound_date" || chip.key === "return_date")) continue;
+    if (filters.date_mode === "exact" && (chip.key === "trip_length_days" || chip.key === "flexible_window")) continue;
+    chips.set(chip.key, chip);
+  }
+
+  const push = (key: string, label: string, value: string, force = false) => {
+    if (!value) return;
+    if (!force && chips.has(key)) return;
+    chips.set(key, { key, label, value, source: sourceFor(key, activeFilters) });
   };
 
-  push("origin", "From", filters.origin || "");
-  push("destination", "To", filters.destination || "Anywhere");
-  if (filters.date_mode === "flexible") {
-    push("date_mode", "Dates", "Flexible");
-    push("flexible_window", "Window", flexibleWindowLabel(filters.flexible_window));
-  } else {
-    push("outbound_date", "Depart", filters.outbound_date || "");
-    push("return_date", "Return", filters.return_date || "");
+  if (filters.origin && (filters.origin !== defaultFilters.origin || chips.has("origin"))) {
+    push("origin", "From", filters.origin, true);
   }
-  if (filters.trip_length_days) push("trip_length_days", "Length", `${filters.trip_length_days} days`);
-  if (filters.budget_max) push("budget_max", "Budget", `$${filters.budget_max}`);
-  if (filters.nonstop === true) push("nonstop", "Stops", "Nonstop");
-  if (filters.nonstop === false) push("nonstop", "Stops", "One stop ok");
-  if (filters.max_flight_duration_minutes) push("max_flight_duration_minutes", "Max flight", `${filters.max_flight_duration_minutes} min`);
-  if (filters.domestic_international !== "any") push("domestic_international", "Region", filters.domestic_international);
-  if (filters.climates.length) push("climates", "Climate", filters.climates.join(", "));
-  if (filters.vibes.length) push("vibes", "Interests", filters.vibes.join(", "));
-  if (filters.sort !== "best_match") push("sort", "Sort", filters.sort.replace("_", " "));
-  return chips;
+  if (filters.destination) {
+    push("destination", "To", filters.destination, true);
+  }
+  if (filters.date_mode === "flexible") {
+    push("date_mode", "Dates", "Flexible", true);
+    if (filters.trip_length_days) {
+      push("trip_length_days", "Length", `${filters.trip_length_days} days`, true);
+    }
+    if (filters.flexible_window !== defaultFilters.flexible_window || chips.has("flexible_window")) {
+      push("flexible_window", "Window", flexibleWindowLabel(filters.flexible_window), true);
+    }
+  } else {
+    if (filters.outbound_date) push("outbound_date", "Depart", filters.outbound_date, true);
+    if (filters.return_date) push("return_date", "Return", filters.return_date, true);
+  }
+  if (typeof filters.budget_max === "number" && (filters.budget_max !== defaultFilters.budget_max || chips.has("budget_max"))) {
+    push("budget_max", "Budget", `$${filters.budget_max}`, true);
+  }
+  if (filters.nonstop === true) push("nonstop", "Stops", "Nonstop", true);
+  if (filters.nonstop === false) push("nonstop", "Stops", "One stop ok", true);
+  if (filters.max_flight_duration_minutes) push("max_flight_duration_minutes", "Max flight", `${filters.max_flight_duration_minutes} min`, true);
+  if (filters.domestic_international !== "any") push("domestic_international", "Region", filters.domestic_international, true);
+  if (filters.climates.length) push("climates", "Climate", filters.climates.join(", "), true);
+  if (filters.vibes.length) push("vibes", "Interests", filters.vibes.join(", "), true);
+  if (filters.sort !== "best_match") push("sort", "Sort", filters.sort.replace("_", " "), true);
+  return Array.from(chips.values());
 }
 
 function formatDuration(minutes?: number | null): string {
@@ -108,53 +122,254 @@ function stopsLabel(stops?: number | null): string {
   return "Stops unavailable";
 }
 
+function deriveReturnDate(outboundDate?: string | null, returnDate?: string | null, tripLengthDays?: number | null): string | null {
+  if (returnDate) return returnDate;
+  if (!outboundDate || !tripLengthDays) return null;
+  const base = new Date(`${outboundDate}T00:00:00`);
+  if (Number.isNaN(base.getTime())) return null;
+  base.setDate(base.getDate() + tripLengthDays);
+  return base.toISOString().slice(0, 10);
+}
+
+function destinationDisplayLabel(recommendation: Recommendation): string {
+  if (recommendation.destination_name && recommendation.destination) {
+    return `${recommendation.destination_name} (${recommendation.destination})`;
+  }
+  return recommendation.destination_name || recommendation.destination || "this destination";
+}
+
+function sameRecommendation(a?: Recommendation | null, b?: Recommendation | null): boolean {
+  return Boolean(a && b && (a.destination || a.destination_name) && (a.destination || a.destination_name) === (b.destination || b.destination_name));
+}
+
+const compactPrimaryChipSx = {
+  alignSelf: "flex-start",
+  borderRadius: "999px",
+  fontWeight: 700
+};
+
+function matchesWeatherFilters(recommendation: Recommendation, filters: TravelFilters): boolean {
+  if (!filters.climates.length) return true;
+  return recommendation.tags.includes("Weather match") || recommendation.weather?.summary?.toLowerCase().includes("match") === true;
+}
+
+function matchesVibeFilters(recommendation: Recommendation, filters: TravelFilters): boolean {
+  if (!filters.vibes.length) return true;
+  return Boolean(recommendation.places?.matched_interests?.length);
+}
+
+function matchedFilterCount(recommendation: Recommendation, filters: TravelFilters): number {
+  let matches = 0;
+  if (typeof filters.budget_max === "number" && recommendation.price !== null && recommendation.price !== undefined && recommendation.price <= filters.budget_max) {
+    matches += 1;
+  }
+  if (filters.nonstop === true && recommendation.stops === 0) {
+    matches += 1;
+  } else if (filters.nonstop === false && recommendation.stops !== null && recommendation.stops !== undefined && recommendation.stops >= 1) {
+    matches += 1;
+  }
+  if (
+    typeof filters.max_flight_duration_minutes === "number" &&
+    recommendation.duration_minutes !== null &&
+    recommendation.duration_minutes !== undefined &&
+    recommendation.duration_minutes <= filters.max_flight_duration_minutes
+  ) {
+    matches += 1;
+  }
+  if (filters.climates.length && matchesWeatherFilters(recommendation, filters)) {
+    matches += 1;
+  }
+  if (filters.vibes.length && matchesVibeFilters(recommendation, filters)) {
+    matches += 1;
+  }
+  return matches;
+}
+
+function similarityScore(candidate: Recommendation, seed: Recommendation, filters: TravelFilters): number {
+  let score = matchedFilterCount(candidate, filters) * 10;
+  const sharedTags = candidate.tags.filter((tag) => seed.tags.includes(tag)).length;
+  score += sharedTags * 4;
+
+  if (candidate.stops !== null && candidate.stops !== undefined && candidate.stops === seed.stops) {
+    score += 3;
+  }
+  if (candidate.weather && seed.weather) {
+    score += 2;
+  }
+
+  const sharedInterests = candidate.places?.matched_interests?.filter((item) => seed.places?.matched_interests?.includes(item)).length || 0;
+  score += sharedInterests * 3;
+
+  if (candidate.price !== null && candidate.price !== undefined && seed.price !== null && seed.price !== undefined) {
+    score += Math.max(0, 6 - Math.abs(candidate.price - seed.price) / 30);
+  }
+  if (
+    candidate.duration_minutes !== null &&
+    candidate.duration_minutes !== undefined &&
+    seed.duration_minutes !== null &&
+    seed.duration_minutes !== undefined
+  ) {
+    score += Math.max(0, 5 - Math.abs(candidate.duration_minutes - seed.duration_minutes) / 60);
+  }
+  if (sameRecommendation(candidate, seed)) {
+    score += 100;
+  }
+  return score;
+}
+
+const surprisePrompts = [
+  "Surprise me with a sunny beach trip next month under $900",
+  "Find me an unexpected long weekend getaway with nonstop flights under $500",
+  "Show me a surprise international city with great food this fall under $1200",
+  "Pick a warm surprise trip for one week sometime in the next 3 months",
+  "Suggest a culture-focused surprise trip with mild weather and a reasonable budget",
+  "Find an adventurous surprise destination with the cheapest dates you can spot"
+];
+
+function nextSurprisePrompt(previous: string | null): string {
+  const options = surprisePrompts.filter((prompt) => prompt !== previous);
+  const pool = options.length ? options : surprisePrompts;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function DestinationTitle({ name, code, featured = false }: { name?: string | null; code?: string | null; featured?: boolean }) {
+  const title = name || code || "Destination";
+  const showCode = Boolean(name && code && name !== code);
+
+  return (
+    <Stack direction="row" spacing={1} alignItems="baseline" justifyContent="flex-start" useFlexGap flexWrap="wrap">
+      <Typography variant={featured ? "h1" : "h2"}>{title}</Typography>
+      {showCode && (
+        <Typography
+          color="text.secondary"
+          sx={{
+            fontSize: featured ? "0.92rem" : "0.8rem",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            transform: "translateY(0.3em)"
+          }}
+        >
+          {code}
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
 export default function App() {
-  const theme = useTheme();
-  const desktopChat = useMediaQuery(theme.breakpoints.up("lg"));
+  const desktopChat = useMediaQuery("(min-width:1800px)");
   const [filters, setFilters] = useState<TravelFilters>(defaultFilters);
   const [activeFilters, setActiveFilters] = useState<ActiveFilterChip[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [fallbackOptions, setFallbackOptions] = useState<FallbackOption[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: "Where to next? Tell me a vibe, a budget, or ask me to surprise you." }
   ]);
   const [message, setMessage] = useState("");
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assistantNotice, setAssistantNotice] = useState<string | null>(null);
   const [flightSearch, setFlightSearch] = useState<FlightSearchState | null>(null);
+  const [lastSurprisePrompt, setLastSurprisePrompt] = useState<string | null>(null);
+  const [similarSeed, setSimilarSeed] = useState<Recommendation | null>(null);
 
-  async function submitChat(text = message) {
+  async function runRecommendation(
+    text: string,
+    { logUserMessage, logAssistantMessage }: { logUserMessage: boolean; logAssistantMessage: boolean }
+  ) {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (logUserMessage && !trimmed) return;
     setLoading(true);
     setError(null);
-    setMessages((items) => [...items, { role: "user", text: trimmed }]);
-    setMessage("");
+    if (logUserMessage) {
+      setMessages((items) => [...items, { role: "user", text: trimmed }]);
+      setMessage("");
+    }
     try {
       const response = await recommendTravel(trimmed, filters);
       setFilters(response.applied_filters);
       setActiveFilters(response.active_filters);
       setRecommendations(response.recommendations);
+      setFallbackOptions(response.fallback_options || []);
+      setAssistantNotice(response.assistant_message);
+      setSimilarSeed(null);
       setFlightSearch(null);
-      setMessages((items) => [...items, { role: "assistant", text: response.assistant_message }]);
+      if (logAssistantMessage) {
+        setMessages((items) => [...items, { role: "assistant", text: response.assistant_message }]);
+      }
     } catch (err) {
       const text = err instanceof Error ? err.message : "Something went wrong.";
       setError(text);
-      setMessages((items) => [...items, { role: "assistant", text: "I could not complete that search yet. Try broader dates or fewer filters." }]);
+      setSimilarSeed(null);
+      setFallbackOptions([]);
+      setAssistantNotice(null);
+      if (logAssistantMessage) {
+        setMessages((items) => [...items, { role: "assistant", text: "I could not complete that search yet. Try broader dates or fewer filters." }]);
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  function updateFilter<K extends keyof TravelFilters>(key: K, value: TravelFilters[K]) {
-    setFilters((current) => ({ ...current, [key]: value }));
+  async function submitChat(text = message) {
+    return runRecommendation(text, { logUserMessage: true, logAssistantMessage: true });
   }
 
-  function toggleListValue(key: "climates" | "vibes", value: string) {
+  function queueSurprisePrompt(): string {
+    const prompt = nextSurprisePrompt(lastSurprisePrompt);
+    setLastSurprisePrompt(prompt);
+    setMessage(prompt);
+    return prompt;
+  }
+
+  async function runFilterSearch() {
+    return runRecommendation("", { logUserMessage: false, logAssistantMessage: false });
+  }
+
+  function applyFallback(option: FallbackOption) {
+    setFilters(option.applied_filters);
+    setActiveFilters(option.active_filters);
+    setRecommendations(option.recommendations);
+    setFallbackOptions([]);
+    setAssistantNotice(option.assistant_message);
+    setSimilarSeed(null);
+    setFlightSearch(null);
+    setError(null);
+    setMessages((items) => [...items, { role: "assistant", text: option.assistant_message }]);
+  }
+
+  function updateFilter<K extends keyof TravelFilters>(key: K, value: TravelFilters[K]) {
     setFilters((current) => {
-      const existing = current[key];
-      return { ...current, [key]: existing.includes(value) ? existing.filter((item) => item !== value) : [...existing, value] };
+      if (key === "date_mode") {
+        if (value === "flexible") {
+          return {
+            ...current,
+            date_mode: "flexible",
+            outbound_date: "",
+            return_date: "",
+            flexible_window_start: null,
+            flexible_window_end: null
+          };
+        }
+        return {
+          ...current,
+          date_mode: "exact",
+          flexible_window_start: null,
+          flexible_window_end: null
+        };
+      }
+
+      if (key === "flexible_window") {
+        return {
+          ...current,
+          flexible_window: value as TravelFilters["flexible_window"],
+          flexible_window_start: null,
+          flexible_window_end: null
+        };
+      }
+
+      return { ...current, [key]: value };
     });
   }
 
@@ -182,16 +397,21 @@ export default function App() {
 
   async function showFlights(recommendation: Recommendation) {
     const destination = recommendation.destination;
-    const destinationLabel = recommendation.destination_name || recommendation.destination || "this destination";
+    const destinationLabel = destinationDisplayLabel(recommendation);
     const outboundDate = recommendation.outbound_date || filters.outbound_date;
-    const returnDate = recommendation.return_date || filters.return_date;
+    const returnDate = deriveReturnDate(recommendation.outbound_date || filters.outbound_date, recommendation.return_date || filters.return_date, filters.trip_length_days);
 
     if (!destination) {
       setFlightSearch({ destination: destinationLabel, loading: false, error: "This recommendation does not include a flight-searchable destination code yet.", response: null });
       return;
     }
     if (!filters.origin || !outboundDate || !returnDate) {
-      setFlightSearch({ destination: destinationLabel, loading: false, error: "Add an origin, departure date, and return date before showing flights.", response: null });
+      setFlightSearch({
+        destination: destinationLabel,
+        loading: false,
+        error: "Show flights currently searches round-trip itineraries, so add an origin plus departure and return dates first.",
+        response: null
+      });
       return;
     }
 
@@ -212,7 +432,18 @@ export default function App() {
     }
   }
 
+  function showMoreLike(recommendation: Recommendation) {
+    setSimilarSeed(recommendation);
+    setAssistantNotice(`Showing broader matches similar to ${destinationDisplayLabel(recommendation)}, ranked by shared traits and filters matched.`);
+    setFallbackOptions([]);
+    setFlightSearch(null);
+    setError(null);
+  }
+
   const featured = recommendations[0];
+  const secondaryRecommendations = similarSeed
+    ? [...recommendations.slice(1)].sort((left, right) => similarityScore(right, similarSeed, filters) - similarityScore(left, similarSeed, filters))
+    : recommendations.slice(1);
   const visibleChips = activeChipsFromFilters(filters, activeFilters);
 
   return (
@@ -233,35 +464,43 @@ export default function App() {
 
       <Container maxWidth={false} sx={{ py: 3, minHeight: "calc(100vh - 65px)", display: "flex" }}>
         <Grid container spacing={3} sx={{ flex: 1, alignItems: "stretch" }}>
-          <Grid item xs={12} lg={desktopChat ? 8.4 : 12} sx={{ display: "flex" }}>
+          <Grid item xs={12} lg={desktopChat ? 8.8 : 12} sx={{ display: "flex" }}>
             <Stack spacing={2} sx={{ flex: 1, minHeight: "calc(100vh - 113px)" }}>
-              <ToolbarPanel filters={filters} updateFilter={updateFilter} onOpenFilters={() => setDrawerOpen(true)} onRunSearch={() => submitChat("Find trips that match my filters")} loading={loading} />
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" aria-label="Active filters">
-                {visibleChips.map((chip) => (
-                  <Chip key={chip.key} label={chipLabel(chip)} color={chip.source === "ai" ? "primary" : "default"} onDelete={() => removeChip(chip.key)} />
-                ))}
-              </Stack>
+              <ToolbarPanel filters={filters} updateFilter={updateFilter} onRunSearch={runFilterSearch} loading={loading} />
+              {visibleChips.length > 0 && (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" aria-label="Active filters">
+                  {visibleChips.map((chip) => (
+                    <Chip key={chip.key} label={chipLabel(chip)} color="primary" onDelete={() => removeChip(chip.key)} sx={compactPrimaryChipSx} />
+                  ))}
+                </Stack>
+              )}
               {error && <Alert severity="error">{error}</Alert>}
-              {featured ? <FeaturedCard recommendation={featured} onSurprise={() => submitChat("Surprise me again")} onShowFlights={() => showFlights(featured)} flightsLoading={Boolean(flightSearch?.loading && flightSearch.destination === (featured.destination_name || featured.destination || "this destination"))} /> : <EmptyState loading={loading} />}
+              {assistantNotice && (fallbackOptions.length > 0 || Boolean(similarSeed)) && <Alert severity="info">{assistantNotice}</Alert>}
+              {fallbackOptions.length > 0 && recommendations.length === 0 && <FallbackOptionsPanel options={fallbackOptions} onApply={applyFallback} />}
+              {featured ? <FeaturedCard recommendation={featured} onSurprise={() => submitChat(queueSurprisePrompt())} onShowFlights={() => showFlights(featured)} flightsLoading={Boolean(flightSearch?.loading && flightSearch.destination === destinationDisplayLabel(featured))} /> : <EmptyState loading={loading} />}
               {flightSearch && <FlightResultsPanel search={flightSearch} />}
               <Grid container spacing={2}>
-                {recommendations.slice(1).map((item) => (
+                {secondaryRecommendations.map((item) => (
                   <Grid item xs={12} sm={6} lg={4} key={`${item.destination}-${item.price}`}>
-                    <DestinationCard recommendation={item} onRefine={() => submitChat(`Find more like ${item.destination_name || item.destination}`)} />
+                    <DestinationCard
+                      recommendation={item}
+                      highlighted={sameRecommendation(item, similarSeed)}
+                      flightsLoading={Boolean(flightSearch?.loading && flightSearch.destination === destinationDisplayLabel(item))}
+                      onRefine={() => showMoreLike(item)}
+                      onShowFlights={() => showFlights(item)}
+                    />
                   </Grid>
                 ))}
               </Grid>
             </Stack>
           </Grid>
           {desktopChat && (
-            <Grid item lg={3.6} sx={{ alignSelf: "stretch" }}>
-              <ChatPanel messages={messages} message={message} setMessage={setMessage} submitChat={() => submitChat()} loading={loading} fullHeight />
+            <Grid item lg={3.2} sx={{ alignSelf: "stretch" }}>
+              <ChatPanel messages={messages} message={message} setMessage={setMessage} submitChat={() => submitChat()} loading={loading} onSurprise={queueSurprisePrompt} fullHeight />
             </Grid>
           )}
         </Grid>
       </Container>
-
-      <FilterDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} filters={filters} updateFilter={updateFilter} toggleListValue={toggleListValue} />
       {!desktopChat && (
         <FloatingChat
           open={chatOpen}
@@ -272,6 +511,7 @@ export default function App() {
           setMessage={setMessage}
           submitChat={() => submitChat()}
           loading={loading}
+          onSurprise={queueSurprisePrompt}
         />
       )}
     </Box>
@@ -286,7 +526,8 @@ function FloatingChat({
   message,
   setMessage,
   submitChat,
-  loading
+  loading,
+  onSurprise
 }: {
   open: boolean;
   onOpen: () => void;
@@ -296,6 +537,7 @@ function FloatingChat({
   setMessage: (value: string) => void;
   submitChat: () => void;
   loading: boolean;
+  onSurprise: () => void;
 }) {
   return (
     <>
@@ -333,7 +575,7 @@ function FloatingChat({
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
-          <ChatPanel messages={messages} message={message} setMessage={setMessage} submitChat={submitChat} loading={loading} popup />
+          <ChatPanel messages={messages} message={message} setMessage={setMessage} submitChat={submitChat} loading={loading} onSurprise={onSurprise} popup />
         </Box>
       )}
     </>
@@ -343,31 +585,49 @@ function FloatingChat({
 function ToolbarPanel({
   filters,
   updateFilter,
-  onOpenFilters,
   onRunSearch,
   loading
 }: {
   filters: TravelFilters;
   updateFilter: <K extends keyof TravelFilters>(key: K, value: TravelFilters[K]) => void;
-  onOpenFilters: () => void;
   onRunSearch: () => void;
   loading: boolean;
 }) {
+  const gridTemplateColumns =
+    filters.date_mode === "flexible"
+      ? {
+          xs: "1fr",
+          lg: "110px 126px 118px 120px 136px minmax(260px, 1fr) 136px"
+        }
+      : {
+          xs: "1fr",
+          lg: "110px 126px 118px 146px 146px minmax(260px, 1fr) 136px"
+        };
+
   return (
-    <Card variant="outlined">
-      <CardContent>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ xs: "stretch", sm: "center" }} useFlexGap flexWrap="wrap">
-          <TextField label="From" value={filters.origin || ""} onChange={(event) => updateFilter("origin", event.target.value.toUpperCase())} inputProps={{ "aria-label": "Origin airport" }} sx={{ width: { xs: "100%", sm: 120 }, flexShrink: 0 }} />
-          <FormControl sx={{ width: { xs: "100%", sm: 135 }, flexShrink: 0 }}>
-            <InputLabel>Dates</InputLabel>
-            <Select label="Dates" value={filters.date_mode} inputProps={{ "aria-label": "Dates" }} onChange={(event) => updateFilter("date_mode", event.target.value as TravelFilters["date_mode"])}>
-              <MenuItem value="exact">Exact</MenuItem>
-              <MenuItem value="flexible">Flexible</MenuItem>
-            </Select>
+    <Card variant="outlined" sx={{ bgcolor: "rgba(255, 255, 255, 0.86)" }}>
+      <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns,
+            gap: 1,
+            alignItems: "center",
+            width: "100%"
+          }}
+        >
+          <TextField label="From" value={filters.origin || ""} onChange={(event) => updateFilter("origin", event.target.value ? event.target.value.toUpperCase() : null)} inputProps={{ "aria-label": "Origin airport" }} sx={{ width: { xs: "100%", sm: 110 }, flexShrink: 0 }} />
+          <TextField label="To" placeholder="Anywhere" value={filters.destination || ""} onChange={(event) => updateFilter("destination", event.target.value ? event.target.value.toUpperCase() : null)} inputProps={{ "aria-label": "Destination airport" }} sx={{ width: { xs: "100%", sm: 126 }, flexShrink: 0 }} />
+          <FormControl sx={{ width: { xs: "100%", sm: 118 }, flexShrink: 0 }}>
+              <InputLabel>Dates</InputLabel>
+              <Select label="Dates" value={filters.date_mode} inputProps={{ "aria-label": "Dates" }} onChange={(event) => updateFilter("date_mode", event.target.value as TravelFilters["date_mode"])}>
+                <MenuItem value="exact">Exact</MenuItem>
+                <MenuItem value="flexible">Flexible</MenuItem>
+              </Select>
           </FormControl>
           {filters.date_mode === "flexible" ? (
             <>
-              <FormControl sx={{ width: { xs: "100%", sm: 145 }, flexShrink: 0 }}>
+              <FormControl sx={{ width: { xs: "100%", sm: 120 }, flexShrink: 0 }}>
                 <InputLabel>Length</InputLabel>
                 <Select label="Length" value={filters.trip_length_days || 7} inputProps={{ "aria-label": "Length" }} onChange={(event) => updateFilter("trip_length_days", Number(event.target.value))}>
                   <MenuItem value={3}>3 days</MenuItem>
@@ -377,7 +637,7 @@ function ToolbarPanel({
                   <MenuItem value={14}>14 days</MenuItem>
                 </Select>
               </FormControl>
-              <FormControl sx={{ width: { xs: "100%", sm: 170 }, flexShrink: 0 }}>
+              <FormControl sx={{ width: { xs: "100%", sm: 136 }, flexShrink: 0 }}>
                 <InputLabel>Window</InputLabel>
                 <Select label="Window" value={filters.flexible_window} inputProps={{ "aria-label": "Window" }} onChange={(event) => updateFilter("flexible_window", event.target.value as TravelFilters["flexible_window"])}>
                   <MenuItem value="next_month">Next month</MenuItem>
@@ -388,83 +648,22 @@ function ToolbarPanel({
             </>
           ) : (
             <>
-              <TextField label="Depart" type="date" value={filters.outbound_date || ""} onChange={(event) => updateFilter("outbound_date", event.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: { xs: "100%", sm: 170 }, flexShrink: 0 }} />
-              <TextField label="Return" type="date" value={filters.return_date || ""} onChange={(event) => updateFilter("return_date", event.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: { xs: "100%", sm: 170 }, flexShrink: 0 }} />
+              <TextField label="Depart" type="date" value={filters.outbound_date || ""} onChange={(event) => updateFilter("outbound_date", event.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: { xs: "100%", sm: 146 }, flexShrink: 0 }} />
+              <TextField label="Return" type="date" value={filters.return_date || ""} onChange={(event) => updateFilter("return_date", event.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: { xs: "100%", sm: 146 }, flexShrink: 0 }} />
             </>
           )}
-          <Box sx={{ minWidth: { xs: "100%", sm: 150 }, flex: "1 1 180px" }}>
+          <Box sx={{ minWidth: { xs: "100%", lg: 260 }, width: "100%" }}>
             <Typography variant="caption" color="text.secondary">
               Budget ${filters.budget_max || 0}
             </Typography>
-            <Slider min={100} max={3000} step={50} value={filters.budget_max || 1000} onChange={(_, value) => updateFilter("budget_max", value as number)} aria-label="Budget" />
+            <Slider min={25} max={3000} step={5} value={filters.budget_max || 1000} onChange={(_, value) => updateFilter("budget_max", value as number)} aria-label="Budget" />
           </Box>
-          <IconButton aria-label="Open filters" onClick={onOpenFilters} color="primary" sx={{ flexShrink: 0 }}>
-            <FilterListIcon />
-          </IconButton>
-          <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />} onClick={onRunSearch} disabled={loading} sx={{ minWidth: 136, flexShrink: 0, whiteSpace: "nowrap" }}>
+          <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <SearchIcon />} onClick={onRunSearch} disabled={loading} sx={{ minWidth: 122, width: "100%", height: 40, flexShrink: 0, whiteSpace: "nowrap" }}>
             {loading ? "Searching" : "Find trips"}
           </Button>
-        </Stack>
+        </Box>
       </CardContent>
     </Card>
-  );
-}
-
-function FilterDrawer({ open, onClose, filters, updateFilter, toggleListValue }: { open: boolean; onClose: () => void; filters: TravelFilters; updateFilter: <K extends keyof TravelFilters>(key: K, value: TravelFilters[K]) => void; toggleListValue: (key: "climates" | "vibes", value: string) => void }) {
-  return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
-      <Box sx={{ width: { xs: 320, sm: 420 }, p: 3 }} role="presentation">
-        <Stack spacing={3}>
-          <Typography variant="h2">Filters</Typography>
-          <TextField label="Destination" placeholder="Anywhere" value={filters.destination || ""} onChange={(event) => updateFilter("destination", event.target.value ? event.target.value.toUpperCase() : null)} />
-          <FormControl fullWidth>
-            <InputLabel>Stops</InputLabel>
-            <Select label="Stops" value={filters.nonstop === true ? "nonstop" : filters.nonstop === false ? "one_stop" : "any"} onChange={(event) => updateFilter("nonstop", event.target.value === "nonstop" ? true : event.target.value === "one_stop" ? false : null)}>
-              <MenuItem value="any">Any stops</MenuItem>
-              <MenuItem value="nonstop">Nonstop</MenuItem>
-              <MenuItem value="one_stop">One stop ok</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField label="Max flight minutes" type="number" value={filters.max_flight_duration_minutes || ""} onChange={(event) => updateFilter("max_flight_duration_minutes", event.target.value ? Number(event.target.value) : null)} />
-          <FormControl fullWidth>
-            <InputLabel>Region</InputLabel>
-            <Select label="Region" value={filters.domestic_international} onChange={(event) => updateFilter("domestic_international", event.target.value as TravelFilters["domestic_international"])}>
-              <MenuItem value="any">Any</MenuItem>
-              <MenuItem value="domestic">Domestic</MenuItem>
-              <MenuItem value="international">International</MenuItem>
-            </Select>
-          </FormControl>
-          <ChipGroup title="Climate" values={climates} selected={filters.climates} onToggle={(value) => toggleListValue("climates", value)} />
-          <ChipGroup title="Interests" values={vibes} selected={filters.vibes} onToggle={(value) => toggleListValue("vibes", value)} />
-          <FormControl fullWidth>
-            <InputLabel>Sort</InputLabel>
-            <Select label="Sort" value={filters.sort} onChange={(event) => updateFilter("sort", event.target.value as TravelFilters["sort"])}>
-              <MenuItem value="best_match">Best match</MenuItem>
-              <MenuItem value="cheapest">Cheapest</MenuItem>
-              <MenuItem value="shortest_flight">Shortest flight</MenuItem>
-              <MenuItem value="sunniest">Sunniest</MenuItem>
-              <MenuItem value="most_surprising">Most surprising</MenuItem>
-            </Select>
-          </FormControl>
-          <Button variant="contained" onClick={onClose}>
-            Apply filters
-          </Button>
-        </Stack>
-      </Box>
-    </Drawer>
-  );
-}
-
-function ChipGroup({ title, values, selected, onToggle }: { title: string; values: string[]; selected: string[]; onToggle: (value: string) => void }) {
-  return (
-    <Stack spacing={1}>
-      <Typography variant="subtitle2">{title}</Typography>
-      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-        {values.map((value) => (
-          <Chip key={value} label={value.replace("_", " ")} color={selected.includes(value) ? "primary" : "default"} onClick={() => onToggle(value)} />
-        ))}
-      </Stack>
-    </Stack>
   );
 }
 
@@ -474,6 +673,7 @@ function ChatPanel({
   setMessage,
   submitChat,
   loading,
+  onSurprise,
   fullHeight = false,
   popup = false
 }: {
@@ -482,6 +682,7 @@ function ChatPanel({
   setMessage: (value: string) => void;
   submitChat: () => void;
   loading: boolean;
+  onSurprise: () => void;
   fullHeight?: boolean;
   popup?: boolean;
 }) {
@@ -524,7 +725,7 @@ function ChatPanel({
             <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon />} onClick={submitChat} disabled={loading}>
               {loading ? "Asking" : "Ask"}
             </Button>
-            <Button variant="outlined" onClick={() => setMessage("Surprise me somewhere sunny next week under $1000")}>
+            <Button variant="outlined" onClick={onSurprise}>
               Surprise me
             </Button>
           </Stack>
@@ -552,25 +753,59 @@ function FeaturedCard({
           <Typography variant="overline" color="secondary">
             Best match
           </Typography>
-          <Typography variant="h1">{recommendation.destination_name || recommendation.destination}</Typography>
+          <DestinationTitle name={recommendation.destination_name} code={recommendation.destination} featured />
           <Typography variant="h2">{recommendation.price ? `$${recommendation.price}` : "Price available"} · {Math.round(recommendation.match_score * 100)}% match</Typography>
-          <Typography color="text.secondary">{recommendation.why}</Typography>
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-            {recommendation.tags.map((tag) => (
-              <Chip key={tag} label={tag} color="primary" />
-            ))}
-            {recommendation.weather && <Chip label={recommendation.weather.summary} />}
-            {recommendation.places && <Chip label={recommendation.places.summary} />}
-          </Stack>
+          <RecommendationPills recommendation={recommendation} />
         </Stack>
       </CardContent>
       <CardActions>
         <Button startIcon={flightsLoading ? <CircularProgress size={16} color="inherit" /> : <FlightTakeoffIcon />} variant="contained" onClick={onShowFlights} disabled={flightsLoading}>
           {flightsLoading ? "Loading flights" : "Show flights"}
         </Button>
-        <Button startIcon={<FavoriteBorderIcon />}>Save</Button>
         <Button onClick={onSurprise}>Surprise me again</Button>
       </CardActions>
+    </Card>
+  );
+}
+
+function RecommendationPills({ recommendation }: { recommendation: Recommendation }) {
+  const hasSignals = recommendation.tags.length > 0 || recommendation.weather || recommendation.places;
+
+  return (
+    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+      {recommendation.tags.map((tag) => (
+        <Chip key={tag} label={tag} color="primary" sx={compactPrimaryChipSx} />
+      ))}
+      {recommendation.places && <Chip label={recommendation.places.summary} color="primary" sx={compactPrimaryChipSx} />}
+      {!hasSignals && <Chip label={`${Math.round(recommendation.match_score * 100)}% match`} variant="outlined" />}
+    </Stack>
+  );
+}
+
+function FallbackOptionsPanel({
+  options,
+  onApply
+}: {
+  options: FallbackOption[];
+  onApply: (option: FallbackOption) => void;
+}) {
+  return (
+    <Card variant="outlined" sx={{ bgcolor: "rgba(255, 255, 255, 0.9)" }}>
+      <CardContent>
+        <Stack spacing={2}>
+          <Typography variant="h2">Verified fallback options</Typography>
+          <Typography color="text.secondary">
+            These alternatives already produced results, so applying one will move you forward without another dead end.
+          </Typography>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            {options.map((option) => (
+              <Button key={option.label} variant="outlined" onClick={() => onApply(option)}>
+                {option.label}
+              </Button>
+            ))}
+          </Stack>
+        </Stack>
+      </CardContent>
     </Card>
   );
 }
@@ -620,23 +855,42 @@ function FlightResultsPanel({ search }: { search: FlightSearchState }) {
   );
 }
 
-function DestinationCard({ recommendation, onRefine }: { recommendation: Recommendation; onRefine: () => void }) {
+function DestinationCard({
+  recommendation,
+  onRefine,
+  onShowFlights,
+  flightsLoading,
+  highlighted
+}: {
+  recommendation: Recommendation;
+  onRefine: () => void;
+  onShowFlights: () => void;
+  flightsLoading: boolean;
+  highlighted: boolean;
+}) {
   return (
-    <Card variant="outlined" sx={{ height: "100%" }}>
+    <Card
+      variant="outlined"
+      data-testid={`destination-card-${recommendation.destination || recommendation.destination_name || "unknown"}`}
+      sx={{
+        height: "100%",
+        borderColor: highlighted ? "#2e7d32" : undefined,
+        boxShadow: highlighted ? "0 0 0 2px rgba(46, 125, 50, 0.14)" : undefined,
+        background: highlighted ? "linear-gradient(180deg, rgba(236, 249, 239, 0.92) 0%, rgba(255, 255, 255, 0.98) 100%)" : undefined
+      }}
+    >
       <CardContent>
-        <Stack spacing={1.25}>
-          <Typography variant="h2">{recommendation.destination_name || recommendation.destination}</Typography>
+        <Stack spacing={1.5}>
+          <DestinationTitle name={recommendation.destination_name} code={recommendation.destination} />
           <Typography fontWeight={800}>{recommendation.price ? `$${recommendation.price}` : "Price available"}</Typography>
-          <Typography variant="body2" color="text.secondary">{recommendation.why}</Typography>
-          {recommendation.weather && <Chip size="small" label={recommendation.weather.summary} />}
-          {recommendation.places && <Chip size="small" label={recommendation.places.summary} />}
+          <RecommendationPills recommendation={recommendation} />
         </Stack>
       </CardContent>
       <CardActions>
-        <Button size="small" onClick={onRefine}>Refine</Button>
-        <IconButton aria-label="Save destination">
-          <FavoriteBorderIcon />
-        </IconButton>
+        <Button size="small" startIcon={flightsLoading ? <CircularProgress size={14} color="inherit" /> : <FlightTakeoffIcon fontSize="small" />} onClick={onShowFlights} disabled={flightsLoading}>
+          {flightsLoading ? "Loading flights" : "Show flights"}
+        </Button>
+        <Button size="small" onClick={onRefine}>{`More like ${recommendation.destination || recommendation.destination_name || "this"}`}</Button>
       </CardActions>
     </Card>
   );

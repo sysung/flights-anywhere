@@ -39,6 +39,31 @@ export const theme = createTheme({
         root: { borderRadius: 8 }
       }
     },
+    MuiChip: {
+      defaultProps: {
+        size: "small"
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: 999,
+          fontWeight: 700
+        },
+        sizeSmall: {
+          height: 30
+        },
+        labelSmall: {
+          paddingLeft: 12,
+          paddingRight: 12
+        },
+        filledPrimary: {
+          backgroundColor: "#176b63",
+          color: "#ffffff"
+        },
+        deleteIcon: {
+          color: "rgba(255, 255, 255, 0.72)"
+        }
+      }
+    },
     MuiCard: {
       styleOverrides: {
         root: { borderRadius: 8 }

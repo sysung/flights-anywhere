@@ -5,7 +5,7 @@ from datetime import date
 from unittest.mock import patch
 
 from api.google_flights.models import FlightOption, SearchResponse
-from api.travel.enrichment import PlacesSignal, WeatherSignal
+from api.travel.enrichment import PlacesSignal, WeatherSignal, destination_name
 from api.travel.intent import TravelIntentExtractor, is_iso_date, merge_filters
 from api.travel.mcp_server import parse_travel_intent_tool, recommend_destinations_tool
 from api.travel.models import FilterParseRequest, RecommendationRequest, TravelFilters
@@ -104,6 +104,9 @@ class FakePlaces:
 
 
 class TravelIntentTests(unittest.TestCase):
+    def test_destination_name_falls_back_to_google_flights_entities(self) -> None:
+        self.assertEqual(destination_name("SAN"), "San Diego")
+
     def test_extracts_surprise_budget_and_weather_prompt(self) -> None:
         intent = TravelIntentExtractor().extract("Surprise me somewhere sunny next week under $1000")
 
@@ -112,6 +115,12 @@ class TravelIntentTests(unittest.TestCase):
         self.assertIn("sunny", intent.filters.climates)
         self.assertEqual(intent.filters.sort, "best_match")
         self.assertTrue(intent.requires_weather)
+        self.assertIsNotNone(intent.filters.outbound_date)
+
+    def test_extracts_small_budget_values(self) -> None:
+        intent = TravelIntentExtractor().extract("Find me a sunny beach trip next week under $40")
+
+        self.assertEqual(intent.filters.budget_max, 40)
         self.assertIsNotNone(intent.filters.outbound_date)
 
     def test_extracts_japanese_temple_places_prompt(self) -> None:
@@ -124,6 +133,15 @@ class TravelIntentTests(unittest.TestCase):
         intent = TravelIntentExtractor().extract("for a week", TravelFilters(origin="SFO"))
 
         self.assertEqual(intent.filters.trip_length_days, 7)
+
+    def test_single_airport_followup_updates_destination_when_origin_exists(self) -> None:
+        intent = TravelIntentExtractor().extract(
+            "How about HND instead?",
+            TravelFilters(origin="SFO", destination="LAX", outbound_date="2026-08-01", return_date="2026-08-08"),
+        )
+
+        self.assertEqual(intent.filters.destination, "HND")
+        self.assertIsNone(intent.filters.origin)
 
     def test_flexible_next_week_uses_current_trip_length(self) -> None:
         intent = TravelIntentExtractor().extract("sometime next week", TravelFilters(origin="SFO", trip_length_days=7))
@@ -144,6 +162,18 @@ class TravelIntentTests(unittest.TestCase):
         self.assertNotEqual(filters.outbound_date, "next week")
         self.assertTrue(is_iso_date(filters.outbound_date))
         self.assertTrue(is_iso_date(filters.return_date))
+
+    def test_merge_clears_exact_dates_when_switching_to_flexible(self) -> None:
+        filters = merge_filters(
+            TravelFilters(origin="SFO", outbound_date="2026-08-01", return_date="2026-08-08"),
+            TravelFilters(date_mode="flexible", trip_length_days=7),
+        )
+
+        self.assertEqual(filters.date_mode, "flexible")
+        self.assertIsNone(filters.outbound_date)
+        self.assertIsNone(filters.return_date)
+        self.assertIsNotNone(filters.flexible_window_start)
+        self.assertIsNotNone(filters.flexible_window_end)
 
     def test_extracts_cheapest_anytime_as_flexible_dates(self) -> None:
         intent = TravelIntentExtractor().extract("Find the cheapest 1 week trip anytime in the next 6 months under $1000")
@@ -183,6 +213,7 @@ class TravelRecommendationTests(unittest.TestCase):
         self.assertEqual(response.recommendations[0].weather.summary, "HND weather profile")
         self.assertIn("temples", response.recommendations[0].places.matched_interests)
         self.assertTrue(response.active_filters)
+        self.assertEqual(response.fallback_options, [])
 
     def test_recommendation_asks_for_missing_origin_or_dates(self) -> None:
         response = self.service().recommend(RecommendationRequest(message="surprise me somewhere tropical under $1000"))
@@ -216,6 +247,45 @@ class TravelRecommendationTests(unittest.TestCase):
         self.assertGreater(len(service.flights.requests), 1)
         self.assertTrue(is_iso_date(service.flights.requests[0].outbound_date))
 
+    def test_filter_only_prompt_uses_existing_filters_without_ai_config(self) -> None:
+        response = self.service().recommend(
+            RecommendationRequest(
+                message="Find trips that match my filters",
+                filters=TravelFilters(origin="SFO", outbound_date="2026-08-01", return_date="2026-08-08", budget_max=1000),
+            )
+        )
+
+        self.assertFalse(response.clarifying_question)
+        self.assertTrue(response.recommendations)
+
+    def test_no_exact_match_returns_closest_recommendations(self) -> None:
+        response = self.service().recommend(
+            RecommendationRequest(
+                message="sunny next week under $200",
+                filters=TravelFilters(origin="SFO", outbound_date="2026-08-01", return_date="2026-08-08", budget_max=200, climates=["sunny"]),
+            )
+        )
+
+        self.assertTrue(response.recommendations)
+        self.assertEqual(response.fallback_options, [])
+        self.assertIn("couldn't satisfy every filter exactly", response.assistant_message.lower())
+        self.assertIn("Closest match", response.recommendations[0].tags)
+
+    def test_flexible_followup_removes_stale_exact_date_chips(self) -> None:
+        response = self.service().parse_filters(
+            FilterParseRequest(
+                message="cheapest trip any date",
+                filters=TravelFilters(origin="SFO", outbound_date="2026-08-01", return_date="2026-08-08"),
+            )
+        )
+
+        self.assertEqual(response.applied_filters.date_mode, "flexible")
+        self.assertIsNone(response.applied_filters.outbound_date)
+        self.assertIsNone(response.applied_filters.return_date)
+        keys = [chip.key for chip in response.active_filters]
+        self.assertNotIn("outbound_date", keys)
+        self.assertNotIn("return_date", keys)
+
     def test_flexible_recommendation_searches_candidate_dates_and_keeps_cheapest(self) -> None:
         service = TravelRecommendationService(flights=DateSensitiveFakeFlights(), weather=FakeWeather(), places=FakePlaces())
 
@@ -228,6 +298,7 @@ class TravelRecommendationTests(unittest.TestCase):
 
         self.assertEqual(response.applied_filters.date_mode, "flexible")
         self.assertGreater(len(service.flights.requests), 1)
+        self.assertLessEqual(len(service.flights.requests), 5)
         self.assertEqual(response.recommendations[0].price, 120)
         self.assertIn("Cheapest flexible date", response.recommendations[0].tags)
 
@@ -284,7 +355,6 @@ class TravelRecommendationTests(unittest.TestCase):
 
         self.assertIn("applied_filters", parse_payload)
         self.assertIn("recommendations", recommend_payload)
-
 
 if __name__ == "__main__":
     unittest.main()

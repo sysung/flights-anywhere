@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
+from api.google_flights.entities import load_entities
 from api.travel.models import PlacesSignal, TravelFilters, WeatherSignal
 
 
@@ -76,5 +78,12 @@ def destination_name(code: str | None) -> str | None:
     if not code:
         return None
     profile = DESTINATION_PROFILES.get(code.upper())
-    return profile.name if profile else code.upper()
+    if profile:
+        return profile.name
+    place = cached_entities().get(code.upper())
+    return place.name if place and place.name else code.upper()
 
+
+@lru_cache(maxsize=1)
+def cached_entities():
+    return load_entities()

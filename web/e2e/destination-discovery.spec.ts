@@ -93,6 +93,84 @@ const flexibleRecommendationResponse = {
   clarifying_question: null
 };
 
+const discoveryResponse = {
+  assistant_message: "I found 8 options. My top pick is Los Angeles around $56.",
+  applied_filters: {
+    origin: "SFO",
+    destination: null,
+    date_mode: "flexible",
+    outbound_date: null,
+    return_date: null,
+    trip_length_days: 7,
+    flexible_window: "next_3_months",
+    flexible_window_start: "2026-06-19",
+    flexible_window_end: "2026-09-19",
+    budget_max: 1000,
+    nonstop: null,
+    max_flight_duration_minutes: null,
+    domestic_international: "any",
+    climates: [],
+    vibes: [],
+    sort: "cheapest"
+  },
+  active_filters: [
+    { key: "origin", label: "From", value: "SFO", source: "user" },
+    { key: "date_mode", label: "Dates", value: "Flexible", source: "ai" },
+    { key: "trip_length_days", label: "Length", value: "7 days", source: "user" },
+    { key: "budget_max", label: "Budget", value: "$1000", source: "user" },
+    { key: "sort", label: "Sort", value: "cheapest", source: "user" }
+  ],
+  recommendations: [
+    {
+      destination: "LAX",
+      destination_name: "Los Angeles",
+      price: 56,
+      currency: "USD",
+      outbound_date: "2026-07-11",
+      return_date: "2026-07-18",
+      stops: 0,
+      duration_minutes: 95,
+      match_score: 0.7,
+      tags: ["Under budget", "Cheapest flexible date"],
+      why: "This fits because $56; under budget, cheapest flexible date.",
+      weather: null,
+      places: null
+    },
+    {
+      destination: "SAN",
+      destination_name: "San Diego",
+      price: 69,
+      currency: "USD",
+      outbound_date: "2026-07-12",
+      return_date: "2026-07-19",
+      stops: 0,
+      duration_minutes: 102,
+      match_score: 0.68,
+      tags: ["Under budget", "Cheapest flexible date"],
+      why: "This fits because $69; under budget, cheapest flexible date.",
+      weather: null,
+      places: null
+    },
+    {
+      destination: "LAS",
+      destination_name: "Las Vegas",
+      price: 80,
+      currency: "USD",
+      outbound_date: "2026-07-10",
+      return_date: "2026-07-17",
+      stops: 0,
+      duration_minutes: 98,
+      match_score: 0.66,
+      tags: ["Under budget", "Cheapest flexible date"],
+      why: "This fits because $80; under budget, cheapest flexible date.",
+      weather: null,
+      places: null
+    }
+  ],
+  fallback_options: [],
+  clarifying_question: null
+};
+
 test("sunny under $1000 discovery shows loading and recommendations", async ({ page }) => {
   await page.route("**/api/travel/recommend", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 350));
@@ -106,19 +184,16 @@ test("sunny under $1000 discovery shows loading and recommendations", async ({ p
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Flights Anywhere" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Surprise me" })).toHaveCount(1);
-
-  const chatPanel = page.getByTestId("chat-panel");
-  const box = await chatPanel.boundingBox();
-  expect(box?.height).toBeGreaterThan(720);
-
+  await expect(page.getByTestId("chat-panel")).toHaveCount(0);
+  await page.getByRole("button", { name: "Open chat" }).last().click();
+  await expect(page.getByTestId("floating-chat")).toBeVisible();
   await page.getByPlaceholder("Try: sunny next week under $1000").fill("sunny next week under $1000");
   await page.getByRole("button", { name: "Ask" }).click();
 
   await expect(page.getByText("Searching destinations...")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Honolulu" })).toBeVisible();
   await expect(page.getByText("Climate: sunny")).toBeVisible();
-  await expect(page.locator(".MuiChip-label").filter({ hasText: "Sunny next week" }).first()).toBeVisible();
+  await expect(page.getByText("Weather match")).toBeVisible();
 });
 
 test("timeout response appears as a recoverable search error", async ({ page }) => {
@@ -131,6 +206,7 @@ test("timeout response appears as a recoverable search error", async ({ page }) 
   });
 
   await page.goto("/");
+  await page.getByRole("button", { name: "Open chat" }).last().click();
   await page.getByPlaceholder("Try: sunny next week under $1000").fill("sunny next week under $1000");
   await page.getByRole("button", { name: "Ask" }).click();
 
@@ -148,6 +224,7 @@ test("cheapest any-date discovery applies flexible date chips", async ({ page })
   });
 
   await page.goto("/");
+  await page.getByRole("button", { name: "Open chat" }).last().click();
   await page.getByPlaceholder("Try: sunny next week under $1000").fill("find the cheapest 1 week trip any date in the next 6 months under $1000");
   await page.getByRole("button", { name: "Ask" }).click();
 
@@ -156,6 +233,34 @@ test("cheapest any-date discovery applies flexible date chips", async ({ page })
   await expect(page.getByText("Length: 7 days")).toBeVisible();
   await expect(page.getByText("Window: Next 6 months")).toBeVisible();
   await expect(page.locator(".MuiChip-label").filter({ hasText: "Cheapest flexible date" }).first()).toBeVisible();
+});
+
+test("more like SAN stays broad and secondary cards expose flight actions", async ({ page }) => {
+  await page.route("**/api/travel/recommend", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(discoveryResponse)
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Find trips" }).click();
+
+  await expect(page.getByRole("heading", { name: "Los Angeles" })).toBeVisible();
+  await expect(page.getByText("LAX")).toBeVisible();
+
+  const sanCard = page.getByTestId("destination-card-SAN");
+  await expect(sanCard.getByText("San Diego")).toBeVisible();
+  await expect(sanCard.getByText("SAN", { exact: true })).toBeVisible();
+  await expect(page.getByText("This fits because $69; under budget, cheapest flexible date.")).toHaveCount(0);
+  await expect(sanCard.getByRole("button", { name: "Show flights" })).toBeVisible();
+  await expect(sanCard.getByRole("button", { name: "More like SAN" })).toBeVisible();
+
+  await sanCard.getByRole("button", { name: "More like SAN" }).click();
+
+  await expect(page.getByText("Showing broader matches similar to San Diego (SAN), ranked by shared traits and filters matched.")).toBeVisible();
+  await expect(page.getByText("To: SAN")).toHaveCount(0);
 });
 
 test("narrow desktop uses a bottom-right chat popup instead of covering filters", async ({ page }) => {

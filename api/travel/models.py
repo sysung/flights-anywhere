@@ -101,12 +101,21 @@ class RecommendationRequest(BaseModel):
     conversation_id: str | None = None
 
 
+class FallbackOption(BaseModel):
+    label: str
+    assistant_message: str
+    applied_filters: TravelFilters
+    active_filters: list[ActiveFilterChip] = Field(default_factory=list)
+    recommendations: list[DestinationRecommendation] = Field(default_factory=list)
+
+
 class RecommendationResponse(BaseModel):
     assistant_message: str
     applied_filters: TravelFilters
     active_filters: list[ActiveFilterChip] = Field(default_factory=list)
     actions: list[FilterAction] = Field(default_factory=list)
     recommendations: list[DestinationRecommendation] = Field(default_factory=list)
+    fallback_options: list[FallbackOption] = Field(default_factory=list)
     clarifying_question: ClarifyingQuestion | None = None
 
 

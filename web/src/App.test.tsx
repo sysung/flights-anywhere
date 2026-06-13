@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "@mui/material/styles";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -77,6 +77,103 @@ const response = {
       places: null
     }
   ],
+  fallback_options: [],
+  clarifying_question: null
+};
+
+const fallbackResponse = {
+  assistant_message: "I couldn't find an exact match for every filter. I already verified fallback options that do work: raise budget to $450, or remove climate filter.",
+  applied_filters: {
+    origin: "SFO",
+    destination: null,
+    date_mode: "exact",
+    outbound_date: "2026-06-15",
+    return_date: "2026-06-19",
+    trip_length_days: null,
+    flexible_window: "next_3_months",
+    flexible_window_start: null,
+    flexible_window_end: null,
+    budget_max: 200,
+    nonstop: null,
+    max_flight_duration_minutes: null,
+    domestic_international: "any",
+    climates: ["sunny"],
+    vibes: [],
+    sort: "best_match"
+  },
+  active_filters: [
+    { key: "origin", label: "From", value: "SFO", source: "user" },
+    { key: "budget_max", label: "Budget", value: "$200", source: "user" },
+    { key: "climates", label: "Climate", value: "sunny", source: "ai" }
+  ],
+  recommendations: [],
+  fallback_options: [
+    {
+      label: "Raise budget to $450",
+      assistant_message: "I couldn't find a match with your current budget, but I did verify options if we raise it to $450.",
+      applied_filters: {
+        origin: "SFO",
+        destination: null,
+        date_mode: "exact",
+        outbound_date: "2026-06-15",
+        return_date: "2026-06-19",
+        trip_length_days: null,
+        flexible_window: "next_3_months",
+        flexible_window_start: null,
+        flexible_window_end: null,
+        budget_max: 450,
+        nonstop: null,
+        max_flight_duration_minutes: null,
+        domestic_international: "any",
+        climates: ["sunny"],
+        vibes: [],
+        sort: "best_match"
+      },
+      active_filters: [
+        { key: "origin", label: "From", value: "SFO", source: "user" },
+        { key: "budget_max", label: "Budget", value: "$450", source: "user" },
+        { key: "climates", label: "Climate", value: "sunny", source: "user" }
+      ],
+      recommendations: [response.recommendations[0]]
+    },
+    {
+      label: "Remove climate filter",
+      assistant_message: "I couldn't find a destination that matches the current weather filter, but I did verify options once I removed it.",
+      applied_filters: {
+        origin: "SFO",
+        destination: null,
+        date_mode: "exact",
+        outbound_date: "2026-06-15",
+        return_date: "2026-06-19",
+        trip_length_days: null,
+        flexible_window: "next_3_months",
+        flexible_window_start: null,
+        flexible_window_end: null,
+        budget_max: 200,
+        nonstop: null,
+        max_flight_duration_minutes: null,
+        domestic_international: "any",
+        climates: [],
+        vibes: [],
+        sort: "best_match"
+      },
+      active_filters: [
+        { key: "origin", label: "From", value: "SFO", source: "user" },
+        { key: "budget_max", label: "Budget", value: "$200", source: "user" }
+      ],
+      recommendations: [
+        {
+          ...response.recommendations[0],
+          destination: "SEA",
+          destination_name: "Seattle",
+          price: 180,
+          weather: { summary: "Weather match is moderate." },
+          tags: ["Under budget"],
+          why: "This fits because $180; under budget."
+        }
+      ]
+    }
+  ],
   clarifying_question: null
 };
 
@@ -115,21 +212,111 @@ const flightsResponse = {
   workflow_state: { mode: "shopping" }
 };
 
+const discoveryResponse = {
+  assistant_message: "I found 8 options. My top pick is Los Angeles around $56.",
+  applied_filters: {
+    origin: "SFO",
+    destination: null,
+    date_mode: "flexible",
+    outbound_date: null,
+    return_date: null,
+    trip_length_days: 7,
+    flexible_window: "next_3_months",
+    flexible_window_start: "2026-06-15",
+    flexible_window_end: "2026-09-15",
+    budget_max: 1000,
+    nonstop: null,
+    max_flight_duration_minutes: null,
+    domestic_international: "any",
+    climates: [],
+    vibes: [],
+    sort: "cheapest"
+  },
+  active_filters: [
+    { key: "origin", label: "From", value: "SFO", source: "user" },
+    { key: "date_mode", label: "Dates", value: "Flexible", source: "ai" },
+    { key: "trip_length_days", label: "Length", value: "7 days", source: "user" },
+    { key: "budget_max", label: "Budget", value: "$1000", source: "user" },
+    { key: "sort", label: "Sort", value: "cheapest", source: "user" }
+  ],
+  recommendations: [
+    {
+      destination: "LAX",
+      destination_name: "Los Angeles",
+      price: 56,
+      currency: "USD",
+      outbound_date: "2026-07-11",
+      return_date: "2026-07-18",
+      stops: 0,
+      duration_minutes: 95,
+      match_score: 0.7,
+      tags: ["Under budget", "Cheapest flexible date"],
+      why: "This fits because $56; under budget, cheapest flexible date.",
+      weather: null,
+      places: null
+    },
+    {
+      destination: "SAN",
+      destination_name: "San Diego",
+      price: 69,
+      currency: "USD",
+      outbound_date: "2026-07-12",
+      return_date: "2026-07-19",
+      stops: 0,
+      duration_minutes: 102,
+      match_score: 0.68,
+      tags: ["Under budget", "Cheapest flexible date"],
+      why: "This fits because $69; under budget, cheapest flexible date.",
+      weather: null,
+      places: null
+    },
+    {
+      destination: "LAS",
+      destination_name: "Las Vegas",
+      price: 80,
+      currency: "USD",
+      outbound_date: "2026-07-10",
+      return_date: "2026-07-17",
+      stops: 0,
+      duration_minutes: 98,
+      match_score: 0.66,
+      tags: ["Under budget", "Cheapest flexible date"],
+      why: "This fits because $80; under budget, cheapest flexible date.",
+      weather: null,
+      places: null
+    }
+  ],
+  fallback_options: [],
+  clarifying_question: null
+};
+
+const secondaryFlightsResponse = {
+  ...flightsResponse,
+  query: { origin: "SFO", destination: "SAN" },
+  results: [
+    {
+      ...flightsResponse.results[0],
+      dest: "SAN",
+      airline_code: "AS",
+      airline: "Alaska",
+      flight_num: "AS2211",
+      flight_nums: ["AS2211"]
+    }
+  ]
+};
+
 describe("App", () => {
   beforeEach(() => {
     mockViewportWidth(1440);
   });
 
-  it("opens the filter drawer and updates chip selections", async () => {
+  it("updates inline filters and renders active pills", async () => {
     renderApp();
     const user = userEvent.setup();
 
-    await user.click(screen.getByLabelText("Open filters"));
-    await user.click(screen.getByText("temples"));
+    await user.type(screen.getByLabelText("Destination airport"), "hnl");
 
-    expect(screen.getByText("Filters")).toBeInTheDocument();
-    expect(screen.getAllByText("temples").length).toBeGreaterThan(0);
-    expect(screen.getByText("Interests: temples")).toBeInTheDocument();
+    expect(screen.getByText("To: HNL")).toBeInTheDocument();
   });
 
   it("runs a recommendation from manual filters", async () => {
@@ -141,15 +328,13 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Find trips" }));
 
     await waitFor(() => expect(screen.getByText("Honolulu")).toBeInTheDocument());
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/travel/recommend",
-      expect.objectContaining({
-        body: expect.stringContaining("Find trips that match my filters")
-      })
-    );
+    expect(fetch).toHaveBeenCalledWith("/api/travel/recommend", expect.any(Object));
+    const request = JSON.parse(fetch.mock.calls[0][1].body as string);
+    expect(request.message).toBe("");
+    expect(request.filters.origin).toBe("SFO");
   });
 
-  it("switches the toolbar into flexible date mode", async () => {
+  it("switches the inline toolbar into flexible date mode", async () => {
     renderApp();
     const user = userEvent.setup();
 
@@ -165,6 +350,32 @@ describe("App", () => {
     expect(screen.getByText("Window: Next 6 months")).toBeInTheDocument();
   });
 
+  it("clears stale exact dates when switching the toolbar to flexible mode", async () => {
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => response });
+    vi.stubGlobal("fetch", fetch);
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText("Depart"), "2026-06-15");
+    await user.type(screen.getByLabelText("Return"), "2026-06-19");
+    expect(screen.getByText("Depart: 2026-06-15")).toBeInTheDocument();
+    expect(screen.getByText("Return: 2026-06-19")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Dates"));
+    await user.click(screen.getByRole("option", { name: "Flexible" }));
+
+    expect(screen.queryByText("Depart: 2026-06-15")).not.toBeInTheDocument();
+    expect(screen.queryByText("Return: 2026-06-19")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Find trips" }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    const request = JSON.parse(fetch.mock.calls[0][1].body as string);
+    expect(request.filters.outbound_date).toBe("");
+    expect(request.filters.return_date).toBe("");
+    expect(request.filters.date_mode).toBe("flexible");
+  });
+
   it("shows a loading indicator while recommendations are searching", async () => {
     let resolveFetch: (value: unknown) => void;
     const pending = new Promise((resolve) => {
@@ -174,6 +385,7 @@ describe("App", () => {
     renderApp();
     const user = userEvent.setup();
 
+    await user.click(screen.getAllByRole("button", { name: "Open chat" })[0]);
     await user.type(screen.getAllByPlaceholderText("Try: sunny next week under $1000")[0], "sunny next week under $1000");
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
@@ -191,10 +403,11 @@ describe("App", () => {
 
     expect(screen.getByText("Start with a destination mood")).toBeInTheDocument();
     expect(screen.getByTestId("start-pane")).toHaveStyle({ flex: "1", minHeight: "calc(100vh - 300px)", width: "100%" });
-    expect(screen.getAllByRole("button", { name: "Surprise me" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Open chat" }).length).toBeGreaterThan(0);
   });
 
   it("renders the desktop chat rail as a full-height panel", () => {
+    mockViewportWidth(1920);
     renderApp();
 
     expect(screen.getByTestId("chat-panel")).toHaveStyle({ height: "calc(100vh - 114px)" });
@@ -224,12 +437,36 @@ describe("App", () => {
     renderApp();
     const user = userEvent.setup();
 
+    await user.click(screen.getAllByRole("button", { name: "Open chat" })[0]);
     await user.type(screen.getAllByPlaceholderText("Try: sunny next week under $1000")[0], "sunny next week under $1000");
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     await waitFor(() => expect(screen.getByText("Honolulu")).toBeInTheDocument());
     expect(screen.getByText("Climate: sunny")).toBeInTheDocument();
-    expect(screen.getByText(/Sunny next week/)).toBeInTheDocument();
+    expect(screen.getAllByText("Weather match").length).toBeGreaterThan(0);
+  });
+
+  it("rotates the surprise prompt instead of reusing one canned query", async () => {
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByRole("button", { name: "Open chat" })[0]);
+    await user.click(screen.getByRole("button", { name: "Surprise me" }));
+    expect(screen.getByPlaceholderText("Try: sunny next week under $1000")).toHaveValue(
+      "Surprise me with a sunny beach trip next month under $900"
+    );
+
+    await user.click(screen.getByRole("button", { name: "Surprise me" }));
+    expect(screen.getByPlaceholderText("Try: sunny next week under $1000")).toHaveValue(
+      "Find me an unexpected long weekend getaway with nonstop flights under $500"
+    );
+
+    expect(screen.getByPlaceholderText("Try: sunny next week under $1000")).not.toHaveValue(
+      "Surprise me somewhere sunny next week under $1000"
+    );
+
+    random.mockRestore();
   });
 
   it("searches flights from the featured recommendation", async () => {
@@ -246,13 +483,64 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByText("Honolulu")).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Show flights" }));
 
-    await waitFor(() => expect(screen.getByText("Flights to Honolulu")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Flights to Honolulu (HNL)")).toBeInTheDocument());
     expect(screen.getByText("Hawaiian")).toBeInTheDocument();
     expect(screen.getByText(/HA11/)).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(
       "/api/flights/search",
       expect.objectContaining({
         body: expect.stringContaining('"destination":"HNL"')
+      })
+    );
+  });
+
+  it("keeps more-like refinement local and highlights the selected airport card", async () => {
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => discoveryResponse });
+    vi.stubGlobal("fetch", fetch);
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Find trips" }));
+
+    await waitFor(() => expect(screen.getByText("Los Angeles")).toBeInTheDocument());
+    expect(screen.getByText("LAX")).toBeInTheDocument();
+    expect(screen.queryByText(/This fits because/i)).not.toBeInTheDocument();
+
+    const sanCard = screen.getByTestId("destination-card-SAN");
+    expect(within(sanCard).getByText("San Diego")).toBeInTheDocument();
+    expect(within(sanCard).getByText("SAN")).toBeInTheDocument();
+
+    await user.click(within(sanCard).getByRole("button", { name: "More like SAN" }));
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("To: SAN")).not.toBeInTheDocument();
+    expect(screen.getByText("Showing broader matches similar to San Diego (SAN), ranked by shared traits and filters matched.")).toBeInTheDocument();
+    expect(sanCard).toHaveStyle({ borderColor: "#2e7d32" });
+  });
+
+  it("shows flights from a secondary destination card", async () => {
+    const fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === "/api/travel/recommend") return Promise.resolve({ ok: true, json: async () => discoveryResponse });
+      if (url === "/api/flights/search") return Promise.resolve({ ok: true, json: async () => secondaryFlightsResponse });
+      return Promise.reject(new Error(`Unexpected URL ${url}`));
+    });
+    vi.stubGlobal("fetch", fetch);
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Find trips" }));
+    await waitFor(() => expect(screen.getByText("Los Angeles")).toBeInTheDocument());
+
+    const sanCard = screen.getByTestId("destination-card-SAN");
+    await user.click(within(sanCard).getByRole("button", { name: "Show flights" }));
+
+    await waitFor(() => expect(screen.getByText("Flights to San Diego (SAN)")).toBeInTheDocument());
+    expect(screen.getByText("Alaska")).toBeInTheDocument();
+    expect(screen.getByText(/AS2211/)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/flights/search",
+      expect.objectContaining({
+        body: expect.stringContaining('"destination":"SAN"')
       })
     );
   });
@@ -268,9 +556,30 @@ describe("App", () => {
     renderApp();
     const user = userEvent.setup();
 
+    await user.click(screen.getAllByRole("button", { name: "Open chat" })[0]);
     await user.type(screen.getAllByPlaceholderText("Try: sunny next week under $1000")[0], "sunny next week under $1000");
     await user.click(screen.getByRole("button", { name: "Ask" }));
 
     await waitFor(() => expect(screen.getByText("Timed out waiting for a Google Flights session request.")).toBeInTheDocument());
+  });
+
+  it("renders verified fallbacks and applies one without another search", async () => {
+    const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => fallbackResponse });
+    vi.stubGlobal("fetch", fetch);
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(screen.getAllByRole("button", { name: "Open chat" })[0]);
+    await user.type(screen.getAllByPlaceholderText("Try: sunny next week under $1000")[0], "sunny next week under $200");
+    await user.click(screen.getByRole("button", { name: "Ask" }));
+
+    await waitFor(() => expect(screen.getByText("Verified fallback options")).toBeInTheDocument());
+    expect(screen.getAllByText(/already verified fallback options/).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: "Raise budget to $450" }));
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Honolulu")).toBeInTheDocument();
+    expect(screen.queryByText("Verified fallback options")).not.toBeInTheDocument();
   });
 });

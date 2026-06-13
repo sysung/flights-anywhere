@@ -45,11 +45,20 @@ export interface Recommendation {
   flight?: FlightOption | null;
 }
 
+export interface FallbackOption {
+  label: string;
+  assistant_message: string;
+  applied_filters: TravelFilters;
+  active_filters: ActiveFilterChip[];
+  recommendations: Recommendation[];
+}
+
 export interface RecommendationResponse {
   assistant_message: string;
   applied_filters: TravelFilters;
   active_filters: ActiveFilterChip[];
   recommendations: Recommendation[];
+  fallback_options: FallbackOption[];
   clarifying_question?: { field: string; question: string } | null;
 }
 
