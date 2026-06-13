@@ -38,33 +38,48 @@ def recommend_destinations_tool(payload: dict[str, Any], service: TravelRecommen
     return svc.recommend(request).model_dump()
 
 
-def create_mcp_server() -> Any:
+def create_mcp_server(
+    service: TravelRecommendationService | None = None,
+    flights: GoogleFlightsService | None = None,
+    *,
+    streamable_http_path: str = "/mcp",
+    json_response: bool = False,
+    host: str = "127.0.0.1",
+) -> Any:
     try:
         from mcp.server.fastmcp import FastMCP
     except ModuleNotFoundError as exc:
         raise RuntimeError("Install the mcp package to run the travel MCP server.") from exc
 
-    mcp = FastMCP("flights-anywhere")
+    flight_service = flights or GoogleFlightsService()
+    recommendation_service = service or TravelRecommendationService(flights=flight_service)
+    mcp = FastMCP(
+        "flights-anywhere",
+        instructions="Search flights and recommend destinations using the Flights Anywhere backend.",
+        host=host,
+        streamable_http_path=streamable_http_path,
+        json_response=json_response,
+    )
 
     @mcp.tool()
     def parse_travel_intent(payload: dict[str, Any]) -> dict[str, Any]:
-        return parse_travel_intent_tool(payload)
+        return parse_travel_intent_tool(payload, service=recommendation_service)
 
     @mcp.tool()
     def search_flights(payload: dict[str, Any]) -> dict[str, Any]:
-        return search_flights_tool(payload)
+        return search_flights_tool(payload, flights=flight_service)
 
     @mcp.tool()
     def explore_destinations(payload: dict[str, Any]) -> dict[str, Any]:
-        return explore_destinations_tool(payload)
+        return explore_destinations_tool(payload, flights=flight_service)
 
     @mcp.tool()
     def rank_destinations(payload: dict[str, Any]) -> dict[str, Any]:
-        return rank_destinations_tool(payload)
+        return rank_destinations_tool(payload, service=recommendation_service)
 
     @mcp.tool()
     def recommend_destinations(payload: dict[str, Any]) -> dict[str, Any]:
-        return recommend_destinations_tool(payload)
+        return recommend_destinations_tool(payload, service=recommendation_service)
 
     return mcp
 
@@ -75,4 +90,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

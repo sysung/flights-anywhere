@@ -13,7 +13,7 @@ import httpx
 
 from api.google_flights.builders import explore_request, shopping_request
 from api.google_flights.codec import decode_f_req, encode_inner, parse_rpc_response
-from api.google_flights.entities import Place, resolve_place
+from api.google_flights.entities import Place, load_entities, resolve_place
 from api.google_flights.models import FlightSearchRequest, SearchResponse
 from api.google_flights.parsers import parse_explore, parse_flight_options
 from api.google_flights.service import GoogleFlightsService
@@ -140,6 +140,13 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(anywhere.entity_id, "/m/02j71")
         with self.assertRaises(ValueError):
             resolve_place("NOPE", entities)
+
+    def test_entity_cache_includes_recent_recommendation_airports(self) -> None:
+        entities = load_entities()
+
+        self.assertEqual(resolve_place("OGG", entities).entity_id, "/m/0jbs5")
+        self.assertEqual(resolve_place("IAD", entities).entity_id, "/m/0rh6k")
+        self.assertEqual(resolve_place("MDW", entities).entity_id, "/m/01_d4")
 
     def test_decode_and_encode_f_req_round_trip(self) -> None:
         data = session_template().data

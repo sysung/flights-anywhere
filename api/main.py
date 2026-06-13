@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
 import os
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.google_flights.models import FlightSearchRequest, SearchResponse
 from api.google_flights.service import GoogleFlightsService
 from api.travel.intent import AIUnavailableError
+from api.travel.mcp_server import create_mcp_server
 from api.travel.models import FilterParseRequest, FilterParseResponse, RecommendationRequest, RecommendationResponse
 from api.travel.service import TravelRecommendationService
 
@@ -21,10 +24,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Google Flights API")
 service = GoogleFlightsService()
 travel_service = TravelRecommendationService(flights=service)
+mcp_server = create_mcp_server(
+    service=travel_service,
+    flights=service,
+    streamable_http_path="/",
+    json_response=True,
+    host="0.0.0.0",
+)
+mcp_http_app = mcp_server.streamable_http_app()
 WEB_DIST = Path(__file__).resolve().parents[1] / "web" / "dist"
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    async with mcp_server.session_manager.run():
+        yield
+
+
+app = FastAPI(title="Flights Anywhere API", lifespan=lifespan)
 
 
 @app.get("/healthz")
@@ -86,6 +105,13 @@ def recommend_travel(request: RecommendationRequest) -> RecommendationResponse:
         logger.exception("api.travel.recommend.unhandled")
         raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}") from exc
 
+
+@app.api_route("/mcp", methods=["GET", "POST", "DELETE"], include_in_schema=False)
+async def redirect_mcp() -> RedirectResponse:
+    return RedirectResponse(url="/mcp/", status_code=307)
+
+
+app.mount("/mcp", mcp_http_app, name="mcp")
 
 if WEB_DIST.exists():
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")

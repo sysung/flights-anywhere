@@ -50,6 +50,16 @@ VIBE_KEYWORDS = {
     "beach": "beaches",
 }
 
+FILTER_ONLY_PROMPTS = {
+    "",
+    "find trips",
+    "find trips that match my filters",
+    "search",
+    "search with my filters",
+    "show trips",
+    "show destinations",
+}
+
 
 class TravelIntentExtractor:
     def __init__(self, config: AIConfig | None = None) -> None:
@@ -57,6 +67,9 @@ class TravelIntentExtractor:
 
     def extract(self, message: str, current_filters: TravelFilters | None = None) -> ExtractedIntent:
         current = current_filters or TravelFilters()
+        lower = message.strip().lower()
+        if lower in FILTER_ONLY_PROMPTS:
+            return ExtractedIntent(filters=TravelFilters(), confidence=1.0 if current.model_fields_set else 0.6)
         heuristic = self._heuristic_extract(message, current)
         if self._is_good_enough(heuristic, message):
             return heuristic
@@ -77,12 +90,16 @@ class TravelIntentExtractor:
 
         codes = IATA_RE.findall(text)
         if codes:
-            filters.origin = codes[0]
-            sources["origin"] = "user"
-            confidence += 0.1
             if len(codes) > 1:
+                filters.origin = codes[0]
+                sources["origin"] = "user"
                 filters.destination = codes[1]
                 sources["destination"] = "user"
+            else:
+                key = self._single_code_field(text, lower, current_filters, codes[0])
+                setattr(filters, key, codes[0])
+                sources[key] = "user"
+            confidence += 0.1
 
         budget = self._extract_budget(lower)
         if budget:
@@ -179,15 +196,37 @@ class TravelIntentExtractor:
             sources=sources,  # type: ignore[arg-type]
         )
 
+    def _single_code_field(
+        self,
+        text: str,
+        lower: str,
+        current_filters: TravelFilters,
+        code: str,
+    ) -> str:
+        escaped = re.escape(code)
+        if re.search(rf"\bfrom\s+{escaped}\b", text, re.IGNORECASE) or any(
+            phrase in lower for phrase in ("leaving from", "departing from", "fly out of", "origin")
+        ):
+            return "origin"
+        if re.search(rf"\bto\s+{escaped}\b", text, re.IGNORECASE) or any(
+            phrase in lower for phrase in ("instead", "rather", "destination", "go to", "fly to")
+        ):
+            return "destination"
+        if current_filters.origin:
+            return "destination"
+        return "origin"
+
     def _extract_budget(self, lower: str) -> int | None:
         for match in BUDGET_RE.finditer(lower):
             value = int(match.group(1))
-            if value >= 100:
+            if value >= 25:
                 return value
         return None
 
     def _is_good_enough(self, intent: ExtractedIntent, message: str) -> bool:
         lower = message.lower()
+        if intent.filters.destination:
+            return True
         if intent.filters.outbound_date or intent.filters.return_date or intent.filters.trip_length_days:
             return True
         if intent.filters.date_mode == "flexible":
@@ -310,10 +349,15 @@ def normalize_flexible_dates(values: dict[str, Any], today: date | None = None) 
         values["return_date"] = (date.fromisoformat(values["outbound_date"]) + timedelta(days=int(trip_length))).isoformat()
 
     if values.get("date_mode") == "flexible":
+        values["outbound_date"] = None
+        values["return_date"] = None
         values["trip_length_days"] = int(values.get("trip_length_days") or 7)
         window_start, window_end = flexible_window_bounds(values.get("flexible_window") or "next_3_months", today=today)
         values["flexible_window_start"] = values.get("flexible_window_start") or window_start
         values["flexible_window_end"] = values.get("flexible_window_end") or window_end
+    else:
+        values["flexible_window_start"] = None
+        values["flexible_window_end"] = None
 
 
 def is_iso_date(value: str) -> bool:

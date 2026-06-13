@@ -76,3 +76,19 @@ jobs:
       - name: Smoke test health endpoint
         if: ${{ vars.RAILWAY_PUBLIC_URL != '' }}
         run: curl --fail --retry 5 --retry-delay 10 "${{ vars.RAILWAY_PUBLIC_URL }}/healthz"
+
+      - name: Set up Python for MCP smoke test
+        if: ${{ vars.RAILWAY_PUBLIC_URL != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install MCP smoke test dependency
+        if: ${{ vars.RAILWAY_PUBLIC_URL != '' }}
+        run: python -m pip install "mcp>=1.27.0,<2"
+
+      - name: Smoke test MCP endpoint
+        if: ${{ vars.RAILWAY_PUBLIC_URL != '' }}
+        env:
+          MCP_SMOKE_URL: ${{ vars.RAILWAY_PUBLIC_URL }}/mcp
+        run: python -m unittest tests.test_mcp_smoke -v

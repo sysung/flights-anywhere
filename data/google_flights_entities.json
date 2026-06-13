@@ -324,6 +324,16 @@
     ],
     "type": 4
   },
+  "IAD": {
+    "entity_id": "/m/0rh6k",
+    "name": "Washington, D.C.",
+    "country": "United States",
+    "coordinates": [
+      38.9072873,
+      -77.0369274
+    ],
+    "type": 4
+  },
   "JNB": {
     "entity_id": "/m/0g284",
     "name": "Johannesburg",
@@ -444,6 +454,16 @@
     ],
     "type": 4
   },
+  "MDW": {
+    "entity_id": "/m/01_d4",
+    "name": "Chicago",
+    "country": "United States",
+    "coordinates": [
+      41.8781136,
+      -87.6297982
+    ],
+    "type": 4
+  },
   "MEL": {
     "entity_id": "/m/0chgzm",
     "name": "Melbourne",
@@ -521,6 +541,16 @@
     "coordinates": [
       41.88325,
       -87.6323879
+    ],
+    "type": 4
+  },
+  "OGG": {
+    "entity_id": "/m/0jbs5",
+    "name": "Kahului",
+    "country": "United States",
+    "coordinates": [
+      20.8893351,
+      -156.4729464
     ],
     "type": 4
   },
