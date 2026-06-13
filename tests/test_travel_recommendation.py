@@ -106,6 +106,9 @@ class FakePlaces:
 class TravelIntentTests(unittest.TestCase):
     def test_destination_name_falls_back_to_google_flights_entities(self) -> None:
         self.assertEqual(destination_name("SAN"), "San Diego")
+        self.assertEqual(destination_name("OGG"), "Kahului")
+        self.assertEqual(destination_name("IAD"), "Washington, D.C.")
+        self.assertEqual(destination_name("MDW"), "Chicago")
 
     def test_extracts_surprise_budget_and_weather_prompt(self) -> None:
         intent = TravelIntentExtractor().extract("Surprise me somewhere sunny next week under $1000")
